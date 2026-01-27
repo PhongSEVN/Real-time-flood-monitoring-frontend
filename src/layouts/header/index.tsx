@@ -1,3 +1,9 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { Dropdown } from "antd";
+import type { MenuProps } from "antd";
+import { LogoutOutlined, UserOutlined, SettingOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+
 const BellIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -46,6 +52,37 @@ const MenuIcon = () => (
 );
 
 export default function Header() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const menuItems: MenuProps["items"] = [
+    {
+      key: "profile",
+      label: "Thông tin tài khoản",
+      icon: <UserOutlined />,
+    },
+    {
+      key: "settings",
+      label: "Cài đặt",
+      icon: <SettingOutlined />,
+    },
+    {
+      type: "divider",
+    },
+    {
+      key: "logout",
+      label: "Đăng xuất",
+      icon: <LogoutOutlined />,
+      danger: true,
+      onClick: handleLogout,
+    },
+  ];
+
   const now = new Date();
   const time = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -82,13 +119,21 @@ export default function Header() {
             <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
           </div>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <span className="h-8 w-8 rounded-full bg-white/30" />
-            <span>Admin</span>
+            {user?.avatar ? (
+              <img src={user.avatar} alt="User Avatar" className="h-8 w-8 rounded-full" />
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/30 font-bold uppercase text-white">
+                {user?.fullName?.charAt(0) || user?.email?.charAt(0) || "U"}
+              </div>
+            )}
+            <span>{user?.fullName || user?.email || "User"}</span>
           </div>
         </div>
-        <button className="rounded-full bg-white/10 p-2 text-lg hover:bg-white/20">
-          <MenuIcon />
-        </button>
+        <Dropdown menu={{ items: menuItems }} placement="bottomRight" arrow>
+          <button className="rounded-full bg-white/10 p-2 text-lg hover:bg-white/20">
+            <MenuIcon />
+          </button>
+        </Dropdown>
       </div>
     </header>
   );
