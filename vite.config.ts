@@ -13,4 +13,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://onlyyou.io.vn', // Server backend thật
+        changeOrigin: true,            // Thay đổi Host header thành target URL
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('proxyReq', (proxyReq, _req, _res) => {
+            proxyReq.setHeader('Origin', 'http://onlyyou.io.vn');
+          });
+        },
+      },
+    }
+  }
 })
