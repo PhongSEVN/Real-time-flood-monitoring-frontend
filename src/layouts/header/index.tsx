@@ -65,6 +65,7 @@ export default function Header() {
       key: "profile",
       label: "Thông tin tài khoản",
       icon: <UserOutlined />,
+      onClick: () => navigate("/app/profile"),
     },
     {
       key: "settings",

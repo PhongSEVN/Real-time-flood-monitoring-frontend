@@ -10,6 +10,7 @@ const StationsPage = React.lazy(() => import("@/pages/stations/pages"));
 const AlertsPage = React.lazy(() => import("@/pages/alerts/pages"));
 const ReportsPage = React.lazy(() => import("@/pages/reports/pages"));
 const DamagesPage = React.lazy(() => import("@/pages/damages/pages"));
+const ProfilePage = React.lazy(() => import("@/pages/profile/index"));
 
 export const dashboardRoutes: RouteObject[] = [
   {
@@ -69,6 +70,14 @@ export const dashboardRoutes: RouteObject[] = [
     element: (
       <LazyLoad>
         <DamagesPage />
+      </LazyLoad>
+    ),
+  },
+  {
+    path: "profile",
+    element: (
+      <LazyLoad>
+        <ProfilePage />
       </LazyLoad>
     ),
   },
