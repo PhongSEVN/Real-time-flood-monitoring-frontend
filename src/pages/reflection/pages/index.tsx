@@ -1,10 +1,12 @@
-export default function RainMapPage() {
+export default function ReflectionPage() {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-white/80 p-4 shadow-[0_20px_80px_-32px_rgba(15,23,42,0.4)] backdrop-blur">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <div className="text-lg font-semibold text-slate-800">Bản đồ mưa</div>
+            <div className="text-lg font-semibold text-slate-800">
+              Bản đồ mưa
+            </div>
             <div className="text-xs text-slate-500">
               Phân bố cường độ mưa theo khu vực trong 24 giờ gần nhất
             </div>
@@ -44,5 +46,3 @@ export default function RainMapPage() {
     </div>
   );
 }
-
-

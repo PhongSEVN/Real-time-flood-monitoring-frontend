@@ -8,6 +8,9 @@ const ResetPasswordPage = React.lazy(
   () => import("@/pages/auth/resetPassword/pages")
 );
 const PolicyPage = React.lazy(() => import("@/pages/auth/policy"));
+const MessagesRealtimePage = React.lazy(
+  () => import("@/pages/messageRealtime/pages/MessagesRealtime")
+);
 
 export const authRoutes: RouteObject[] = [
   {
@@ -39,6 +42,14 @@ export const authRoutes: RouteObject[] = [
     element: (
       <LazyLoad>
         <PolicyPage />
+      </LazyLoad>
+    ),
+  },
+  {
+    path: "/messages-realtime",
+    element: (
+      <LazyLoad>
+        <MessagesRealtimePage />
       </LazyLoad>
     ),
   },

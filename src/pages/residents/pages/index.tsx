@@ -17,7 +17,7 @@ const alerts = [
   },
 ];
 
-export default function AlertsPage() {
+export default function ResidentsPage() {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-white/80 p-4 shadow-[0_20px_80px_-32px_rgba(15,23,42,0.4)] backdrop-blur">
@@ -43,7 +43,9 @@ export default function AlertsPage() {
                 <div className="text-xs font-semibold uppercase text-slate-500">
                   {a.time} • {a.station}
                 </div>
-                <div className="text-sm font-semibold text-slate-800">{a.desc}</div>
+                <div className="text-sm font-semibold text-slate-800">
+                  {a.desc}
+                </div>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span
@@ -66,5 +68,3 @@ export default function AlertsPage() {
     </div>
   );
 }
-
-

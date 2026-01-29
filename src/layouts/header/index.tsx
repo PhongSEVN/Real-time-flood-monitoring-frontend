@@ -1,3 +1,9 @@
+import { getDefaultWsUrl, realtimeSocket } from "@/services/sockets";
+import type { MenuProps } from "antd";
+import Dropdown from "antd/es/dropdown/dropdown";
+import { Link, LockKeyhole, Power, Settings, UserRound } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
 const BellIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -15,38 +21,36 @@ const BellIcon = () => (
   </svg>
 );
 
-const WifiIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={1.7}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M8.344 15.657a4.5 4.5 0 016.312 0M6.222 13.536a7.5 7.5 0 0111.556 0M4.1 11.414c4.773-4.772 11.828-4.772 16.6 0M12 18.5h.01"
-    />
-  </svg>
-);
-
-const MenuIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={1.8}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
-  </svg>
-);
-
 export default function Header() {
-  const now = new Date();
+  const [now, setNow] = useState(() => new Date());
+  const [isConnected, setIsConnected] = useState(false);
+  const [alertsCount, setAlertsCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    realtimeSocket.connect(getDefaultWsUrl());
+    const unsubOpen = realtimeSocket.onOpen(() => setIsConnected(true));
+    const unsubClose = realtimeSocket.onClose(() => setIsConnected(false));
+    const unsubCount = realtimeSocket.on("alerts_count", (payload) => {
+      const n = typeof payload === "number" ? payload : Number(payload);
+      if (Number.isFinite(n)) setAlertsCount(n);
+    });
+
+    // optional: ask server for initial state
+    realtimeSocket.onOpen(() => realtimeSocket.send("get_alerts_count"));
+
+    return () => {
+      unsubOpen();
+      unsubClose();
+      unsubCount();
+      realtimeSocket.disconnect();
+    };
+  }, []);
+
   const time = now.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
@@ -58,37 +62,103 @@ export default function Header() {
     year: "numeric",
   });
 
+  // Dropwdown menu items
+  const dropdownItems: MenuProps["items"] = useMemo(
+    () => [
+      {
+        label: (
+          <Link
+            to="/profile-manager/detail"
+            className="flex items-center gap-2 px-2"
+          >
+            <UserRound size={18} className="text-gray-700" />
+            <span>Thông tin cá nhân</span>
+          </Link>
+        ),
+        key: "profile",
+      },
+      {
+        label: (
+          <div
+            // onClick={() => setModalChangePassword(true)}
+            className="flex items-center gap-2 px-2"
+          >
+            <LockKeyhole size={18} className="text-gray-700" />
+            <span>Đổi mật khẩu</span>
+          </div>
+        ),
+        key: "change-password",
+      },
+      {
+        label: (
+          <Link to="/setting" className="flex items-center gap-2 px-2">
+            <Settings size={18} className="text-gray-700" />
+            <span>Cài đặt</span>
+          </Link>
+        ),
+        key: "settings",
+      },
+      { type: "divider" },
+      {
+        label: (
+          <div
+            // onClick={showLogoutModal}
+            className="flex items-center gap-2 px-2"
+          >
+            <Power size={18} className="text-gray-700" />
+            <span>Đăng xuất</span>
+          </div>
+        ),
+        key: "logout",
+      },
+    ],
+    []
+  );
+
   return (
     <header className="flex h-16 items-center justify-between bg-[linear-gradient(90deg,#1a5d9f_0%,#1b75c8_100%)] px-6 text-white shadow-lg">
       <div className="flex items-center gap-6">
-        <div className="text-lg font-semibold tracking-wide">{time}</div>
-        <div className="rounded-full bg-white/15 px-3 py-1 text-sm">
-          {date}
+        <div className="flex items-center gap-3">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${
+              isConnected ? "bg-emerald-400" : "bg-rose-400"
+            }`}
+            title={
+              isConnected ? "Realtime: Connected" : "Realtime: Disconnected"
+            }
+          />
+          <div className="text-lg font-semibold tracking-wide">{time}</div>
         </div>
+        <div className="rounded-full bg-white/15 px-3 py-1 text-sm">{date}</div>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-sm font-medium">
-          <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.3)]" />
-          Kết nối
-        </div>
-        <button className="flex items-center gap-2 rounded-full bg-white px-4 py-1 text-sm font-semibold text-[#1a5d9f] shadow-md transition hover:-translate-y-0.5 hover:shadow-lg">
-          <WifiIcon />
-          Kết nối thiết bị
-        </button>
         <div className="flex items-center gap-3 rounded-full bg-white/10 px-4 py-1">
           <div className="relative">
             <BellIcon />
-            <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
+            {alertsCount && alertsCount > 0 ? (
+              <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-[#0d2f56]">
+                {alertsCount > 99 ? "99+" : alertsCount}
+              </span>
+            ) : (
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
+            )}
           </div>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span className="h-8 w-8 rounded-full bg-white/30" />
-            <span>Admin</span>
-          </div>
+          <Dropdown
+            arrow
+            menu={{ items: dropdownItems }}
+            className="cursor-pointer"
+            getPopupContainer={(trigger) =>
+              trigger.parentElement || document.body
+            }
+            placement="bottomRight"
+          >
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <span className="h-8 w-8 rounded-full bg-white/30" />
+              <span>Admin</span>
+            </div>
+          </Dropdown>
         </div>
-        <button className="rounded-full bg-white/10 p-2 text-lg hover:bg-white/20">
-          <MenuIcon />
-        </button>
       </div>
     </header>
   );

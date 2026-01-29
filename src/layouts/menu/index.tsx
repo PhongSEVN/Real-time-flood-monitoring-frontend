@@ -2,17 +2,17 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import {
-  CategoryIcon,
   DashboardIcon,
   ProductIcon,
   ScheduleIcon,
   ServiceIcon,
 } from "@/components/base/icons";
+import { ShieldCheck as ShieldCheckIcon } from "lucide-react";
 
 type MenuItem = {
   key: string;
   label: string;
-  icon: ReactNode;
+  icon: (isActive: boolean) => ReactNode;
   path?: string;
   badge?: string;
 };
@@ -21,45 +21,47 @@ const menuItems: MenuItem[] = [
   {
     key: "dashboard",
     label: "Trang chủ",
-    icon: <DashboardIcon height={22} width={22} isActive />,
+    icon: (isActive) => (
+      <DashboardIcon height={22} width={22} isActive={isActive} />
+    ),
     path: "/app/dashboard",
   },
   {
-    key: "map",
-    label: "Bản đồ ngập",
-    icon: <ServiceIcon height={22} width={22} />,
-    path: "/app/flood-map",
+    key: "reflection",
+    label: "Danh sách phản ánh",
+    icon: (isActive) => (
+      <ServiceIcon height={22} width={22} isActive={isActive} />
+    ),
+    path: "/app/reflection",
   },
   {
-    key: "rain",
-    label: "Bản đồ mưa",
-    icon: <CategoryIcon height={22} width={22} />,
-    path: "/app/rain-map",
+    key: "verification",
+    label: "Quản lý xác thực",
+    icon: (isActive) => (
+      <ShieldCheckIcon
+        height={22}
+        width={22}
+        className={isActive ? "text-white" : "text-sky-400"}
+      />
+    ),
+    path: "/app/verification",
   },
   {
-    key: "stations",
-    label: "Danh sách trạm đo",
-    icon: <ProductIcon height={22} width={22} />,
-    path: "/app/stations",
+    key: "human-resources",
+    label: "Quản lý nhân sự",
+    icon: (isActive) => (
+      <ProductIcon height={22} width={22} isActive={isActive} />
+    ),
+    path: "/app/human-resources",
   },
   {
-    key: "alerts",
-    label: "Cảnh báo",
-    icon: <ScheduleIcon height={22} width={22} />,
-    badge: "2",
-    path: "/app/alerts",
-  },
-  {
-    key: "reports",
-    label: "Báo cáo & Thống kê",
-    icon: <CategoryIcon height={22} width={22} />,
-    path: "/app/reports",
-  },
-  {
-    key: "damages",
-    label: "Quản lý thiệt hại",
-    icon: <CategoryIcon height={22} width={22} />,
-    path: "/app/damages",
+    key: "residents",
+    label: "QL dân cư và y tế",
+    icon: (isActive) => (
+      <ScheduleIcon height={22} width={22} isActive={isActive} />
+    ),
+
+    path: "/app/residents",
   },
 ];
 
@@ -115,7 +117,7 @@ export default function Menu() {
                     : "border-white/10 bg-white/5 group-hover:border-white/25"
                 }`}
               >
-                {item.icon}
+                {item.icon(isActive)}
               </span>
               <span className="flex-1 text-sm font-semibold tracking-wide">
                 {item.label}
