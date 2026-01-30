@@ -1,8 +1,9 @@
 import { getDefaultWsUrl, realtimeSocket } from "@/services/sockets";
 import type { MenuProps } from "antd";
 import Dropdown from "antd/es/dropdown/dropdown";
-import { Link, LockKeyhole, Power, Settings, UserRound } from "lucide-react";
+import { LockKeyhole, Menu as MenuIcon, Power, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const BellIcon = () => (
   <svg
@@ -21,7 +22,12 @@ const BellIcon = () => (
   </svg>
 );
 
-export default function Header() {
+type HeaderProps = {
+  onMenuToggle?: () => void;
+};
+
+export default function Header({ onMenuToggle }: HeaderProps) {
+  const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
   const [isConnected, setIsConnected] = useState(false);
   const [alertsCount, setAlertsCount] = useState<number | null>(null);
@@ -67,21 +73,19 @@ export default function Header() {
     () => [
       {
         label: (
-          <Link
-            to="/profile-manager/detail"
-            className="flex items-center gap-2 px-2"
-          >
+          <div className="flex items-center gap-2 p-2">
             <UserRound size={18} className="text-gray-700" />
             <span>Thông tin cá nhân</span>
-          </Link>
+          </div>
         ),
         key: "profile",
+        onClick: () => navigate("/app/profile-manager/detail"),
       },
       {
         label: (
           <div
             // onClick={() => setModalChangePassword(true)}
-            className="flex items-center gap-2 px-2"
+            className="flex items-center gap-2 p-2"
           >
             <LockKeyhole size={18} className="text-gray-700" />
             <span>Đổi mật khẩu</span>
@@ -89,21 +93,12 @@ export default function Header() {
         ),
         key: "change-password",
       },
-      {
-        label: (
-          <Link to="/setting" className="flex items-center gap-2 px-2">
-            <Settings size={18} className="text-gray-700" />
-            <span>Cài đặt</span>
-          </Link>
-        ),
-        key: "settings",
-      },
-      { type: "divider" },
+
       {
         label: (
           <div
             // onClick={showLogoutModal}
-            className="flex items-center gap-2 px-2"
+            className="flex items-center gap-2 p-2"
           >
             <Power size={18} className="text-gray-700" />
             <span>Đăng xuất</span>
@@ -117,7 +112,17 @@ export default function Header() {
 
   return (
     <header className="flex h-16 items-center justify-between bg-[linear-gradient(90deg,#1a5d9f_0%,#1b75c8_100%)] px-6 text-white shadow-lg">
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4 xl:gap-6">
+        {/* Hamburger button cho mobile */}
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="xl:hidden grid h-10 w-10 place-items-center rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
+            aria-label="Mở menu"
+          >
+            <MenuIcon size={20} />
+          </button>
+        )}
         <div className="flex items-center gap-3">
           <span
             className={`h-2.5 w-2.5 rounded-full ${
@@ -148,9 +153,6 @@ export default function Header() {
             arrow
             menu={{ items: dropdownItems }}
             className="cursor-pointer"
-            getPopupContainer={(trigger) =>
-              trigger.parentElement || document.body
-            }
             placement="bottomRight"
           >
             <div className="flex items-center gap-2 text-sm font-semibold">

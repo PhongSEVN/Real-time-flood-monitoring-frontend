@@ -65,7 +65,12 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-export default function Menu() {
+type MenuProps = {
+  isOpen?: boolean;
+  onClose?: () => void;
+};
+
+export default function Menu({ isOpen = true, onClose }: MenuProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeKey, setActiveKey] = useState<string>("dashboard");
@@ -83,12 +88,28 @@ export default function Menu() {
     setActiveKey(item.key);
     if (item.path) {
       navigate(item.path);
+      // Đóng menu trên mobile sau khi chọn
+      if (onClose) {
+        onClose();
+      }
     }
   };
 
   return (
-    <menu className="fixed top-0 left-0 flex h-screen w-[230px] md:w-[240px] flex-col bg-[linear-gradient(180deg,#0e2d4d_0%,#113c6b_100%)] text-white shadow-2xl shadow-[#0c1f36]/40 z-40">
-      <div className="flex items-center justify-center border-b border-white/10 px-4 py-6 bg-(--color-menu)! overflow-hidden">
+    <>
+      {/* Overlay cho mobile */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/50 z-[45] xl:hidden transition-opacity duration-300"
+        />
+      )}
+      <menu
+        className={`fixed top-0 left-0 flex h-screen w-[230px] md:w-[240px] flex-col bg-[linear-gradient(180deg,#0e2d4d_0%,#113c6b_100%)] text-white shadow-2xl shadow-[#0c1f36]/40 z-50 transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } xl:translate-x-0`}
+      >
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-6 bg-(--color-menu)! overflow-hidden">
         <img
           width={150}
           height={90}
@@ -96,6 +117,29 @@ export default function Menu() {
           alt="logo"
           className="object-contain mix-blend-screen"
         />
+        {/* Close button cho mobile */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="xl:hidden grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
+            aria-label="Đóng menu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
       </div>
       <nav className="flex-1 space-y-2 px-3 py-4">
         {menuItems.map((item) => {
@@ -141,5 +185,6 @@ export default function Menu() {
         </div>
       </div>
     </menu>
+    </>
   );
 }

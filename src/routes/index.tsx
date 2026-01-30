@@ -5,6 +5,8 @@ import { createBrowserRouter } from "react-router-dom";
 import LazyLoad from "@/components/base/lazyLoad";
 import { authRoutes } from "./auth.routes";
 import { dashboardRoutes } from "./dashboard.routes";
+import { humanResourceRoutes } from "./humanResource.routes";
+import { profileRoutes } from "./profile.routes";
 
 const OverviewSplash = React.lazy(() => import("@/pages/overview/pages"));
 
@@ -24,7 +26,7 @@ const routers = createBrowserRouter([
         <DefaultLayout />
       </LazyLoad>
     ),
-    children: [...dashboardRoutes],
+    children: [...dashboardRoutes, ...humanResourceRoutes, ...profileRoutes],
   },
   ...authRoutes,
 ]);

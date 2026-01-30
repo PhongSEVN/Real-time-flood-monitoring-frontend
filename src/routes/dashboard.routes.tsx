@@ -5,9 +5,7 @@ import { Navigate } from "react-router-dom";
 
 const DashboardPage = React.lazy(() => import("@/pages/dashboarch/pages"));
 const ReflectionPage = React.lazy(() => import("@/pages/reflection/pages"));
-const HumanResourcesPage = React.lazy(
-  () => import("@/pages/humanResources/pages")
-);
+
 const ResidentsPage = React.lazy(() => import("@/pages/residents/pages"));
 const VerificationPage = React.lazy(() => import("@/pages/verification/pages"));
 
@@ -33,14 +31,7 @@ export const dashboardRoutes: RouteObject[] = [
       </LazyLoad>
     ),
   },
-  {
-    path: "human-resources",
-    element: (
-      <LazyLoad>
-        <HumanResourcesPage />
-      </LazyLoad>
-    ),
-  },
+
   {
     path: "residents",
     element: (
