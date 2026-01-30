@@ -9,6 +9,8 @@ const RainMapPage = React.lazy(() => import("@/pages/rainMap/pages"));
 const StationsPage = React.lazy(() => import("@/pages/stations/pages"));
 const AlertsPage = React.lazy(() => import("@/pages/alerts/pages"));
 const ReportsPage = React.lazy(() => import("@/pages/reports/pages"));
+const ManageReportsPage = React.lazy(() => import("@/pages/manage-reports/pages"));
+const HouseholdPage = React.lazy(() => import("@/pages/household/pages"));
 const DamagesPage = React.lazy(() => import("@/pages/damages/pages"));
 const ProfilePage = React.lazy(() => import("@/pages/profile/index"));
 
@@ -62,6 +64,22 @@ export const dashboardRoutes: RouteObject[] = [
     element: (
       <LazyLoad>
         <ReportsPage />
+      </LazyLoad>
+    ),
+  },
+  {
+    path: "manage-reports",
+    element: (
+      <LazyLoad>
+        <ManageReportsPage />
+      </LazyLoad>
+    ),
+  },
+  {
+    path: "household",
+    element: (
+      <LazyLoad>
+        <HouseholdPage />
       </LazyLoad>
     ),
   },

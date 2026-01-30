@@ -7,6 +7,8 @@ import {
   ProductIcon,
   ScheduleIcon,
   ServiceIcon,
+  WarningIcon,
+  HomeIcon,
 } from "@/components/base/icons";
 
 type MenuItem = {
@@ -48,6 +50,18 @@ const menuItems: MenuItem[] = [
     icon: <ScheduleIcon height={22} width={22} />,
     badge: "2",
     path: "/app/alerts",
+  },
+  {
+    key: "manage-reports",
+    label: "Quản lý phản ánh",
+    icon: <WarningIcon height={22} width={22} />,
+    path: "/app/manage-reports",
+  },
+  {
+    key: "household",
+    label: "Nhà ở & cư dân",
+    icon: <HomeIcon height={22} width={22} />,
+    path: "/app/household",
   },
   {
     key: "reports",
