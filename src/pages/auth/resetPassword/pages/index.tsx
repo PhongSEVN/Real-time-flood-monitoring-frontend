@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ResetPasswordRequest } from "../interfaces";
 
 export default function ResetPasswordPage() {
-  const [isResetPassword, setIsResetPassword] = useState(true);
+  const [isResetPassword, setIsResetPassword] = useState(false);
   const [form] = Form.useForm<ResetPasswordRequest>();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otpRequest, setOtpRequest] = useState("");

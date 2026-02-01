@@ -28,7 +28,7 @@ const menuItems: MenuItem[] = [
   },
   {
     key: "reflection",
-    label: "Danh sách phản ánh",
+    label: "Quản lý phản ánh",
     icon: (isActive) => (
       <ServiceIcon height={22} width={22} isActive={isActive} />
     ),
@@ -109,82 +109,82 @@ export default function Menu({ isOpen = true, onClose }: MenuProps) {
           isOpen ? "translate-x-0" : "-translate-x-full"
         } xl:translate-x-0`}
       >
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-6 bg-(--color-menu)! overflow-hidden">
-        <img
-          width={150}
-          height={90}
-          src="/image-logo.png"
-          alt="logo"
-          className="object-contain mix-blend-screen"
-        />
-        {/* Close button cho mobile */}
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="xl:hidden grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
-            aria-label="Đóng menu"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
-      </div>
-      <nav className="flex-1 space-y-2 px-3 py-4">
-        {menuItems.map((item) => {
-          const isActive = activeKey === item.key;
-          return (
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-6 bg-(--color-menu)! overflow-hidden">
+          <img
+            width={150}
+            height={90}
+            src="/image-logo.png"
+            alt="logo"
+            className="object-contain mix-blend-screen"
+          />
+          {/* Close button cho mobile */}
+          {onClose && (
             <button
-              key={item.key}
-              onClick={() => handleClick(item)}
-              className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 ${
-                isActive
-                  ? "bg-white/15 backdrop-blur text-white shadow-[0_8px_24px_-12px_rgba(0,0,0,0.5)]"
-                  : "text-white/80 hover:bg-white/8 hover:text-white"
-              }`}
+              onClick={onClose}
+              className="xl:hidden grid h-8 w-8 place-items-center rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
+              aria-label="Đóng menu"
             >
-              <span
-                className={`grid h-9 w-9 place-items-center rounded-lg border transition ${
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+        <nav className="flex-1 space-y-2 px-3 py-4">
+          {menuItems.map((item) => {
+            const isActive = activeKey === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => handleClick(item)}
+                className={`group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 ${
                   isActive
-                    ? "border-white/30 bg-white/10"
-                    : "border-white/10 bg-white/5 group-hover:border-white/25"
+                    ? "bg-white/15 backdrop-blur text-white shadow-[0_8px_24px_-12px_rgba(0,0,0,0.5)]"
+                    : "text-white/80 hover:bg-white/8 hover:text-white"
                 }`}
               >
-                {item.icon(isActive)}
-              </span>
-              <span className="flex-1 text-sm font-semibold tracking-wide">
-                {item.label}
-              </span>
-              {item.badge ? (
-                <span className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-semibold text-[#0d2f56]">
-                  {item.badge}
+                <span
+                  className={`grid h-9 w-9 place-items-center rounded-lg border transition ${
+                    isActive
+                      ? "border-white/30 bg-white/10"
+                      : "border-white/10 bg-white/5 group-hover:border-white/25"
+                  }`}
+                >
+                  {item.icon(isActive)}
                 </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="px-4 pb-6 pt-2">
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/80">
-          <div className="font-semibold text-white">Trung tâm cảnh báo</div>
-          <p className="mt-1 leading-relaxed">
-            Theo dõi thời gian thực tình hình mưa, mực nước và các cảnh báo ngập
-            úng trên toàn hệ thống.
-          </p>
+                <span className="flex-1 text-sm font-semibold tracking-wide">
+                  {item.label}
+                </span>
+                {item.badge ? (
+                  <span className="rounded-full bg-amber-400/90 px-2.5 py-0.5 text-xs font-semibold text-[#0d2f56]">
+                    {item.badge}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="px-4 pb-6 pt-2">
+          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/80">
+            <div className="font-semibold text-white">Trung tâm cảnh báo</div>
+            <p className="mt-1 leading-relaxed">
+              Theo dõi thời gian thực tình hình mưa, mực nước và các cảnh báo
+              ngập úng trên toàn hệ thống.
+            </p>
+          </div>
         </div>
-      </div>
-    </menu>
+      </menu>
     </>
   );
 }

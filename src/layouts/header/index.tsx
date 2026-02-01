@@ -111,7 +111,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   );
 
   return (
-    <header className="flex h-16 items-center justify-between bg-[linear-gradient(90deg,#1a5d9f_0%,#1b75c8_100%)] px-6 text-white shadow-lg">
+    <header className="sticky top-0 z-50 flex h-16 items-center justify-between bg-[linear-gradient(90deg,#1a5d9f_0%,#1b75c8_100%)] px-6 text-white shadow-lg">
       <div className="flex items-center gap-4 xl:gap-6">
         {/* Hamburger button cho mobile */}
         {onMenuToggle && (
@@ -156,7 +156,13 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             placement="bottomRight"
           >
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <span className="h-8 w-8 rounded-full bg-white/30" />
+              <span className="h-8 w-8 rounded-full bg-white/30">
+                <img
+                  src="/avatar-trang-4 1.png"
+                  alt="avatar"
+                  className="w-full h-full rounded-full"
+                />
+              </span>
               <span>Admin</span>
             </div>
           </Dropdown>

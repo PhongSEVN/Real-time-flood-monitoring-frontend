@@ -144,7 +144,7 @@ export default function HumanResourcesPage() {
       width: 220,
       key: "status",
       render: (text: string) => (
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-2 justify-end">
           <span
             className={`text-[16px] font-medium ${
               text === HumanResourcesStatus.ACTIVE
@@ -197,7 +197,7 @@ export default function HumanResourcesPage() {
         <div className="rounded-2xl bg-white/80 p-4 shadow-[0_20px_80px_-32px_rgba(15,23,42,0.4)] backdrop-blur">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div className="2xl:text-[20px] text-[18px] font-semibold text-slate-800">
+              <div className="2xl:text-[26px] xl:text-[22px] text-[18px] font-semibold text-[#272727]">
                 Danh sách nhân sự
               </div>
             </div>
