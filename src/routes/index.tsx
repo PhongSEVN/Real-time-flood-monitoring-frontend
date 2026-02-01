@@ -3,6 +3,7 @@ import React from "react";
 import { createBrowserRouter } from "react-router-dom";
 
 import LazyLoad from "@/components/base/lazyLoad";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { authRoutes } from "./auth.routes";
 import { dashboardRoutes } from "./dashboard.routes";
 import { humanResourceRoutes } from "./humanResource.routes";
@@ -22,9 +23,11 @@ const routers = createBrowserRouter([
   {
     path: "/app",
     element: (
-      <LazyLoad>
-        <DefaultLayout />
-      </LazyLoad>
+      <ProtectedRoute>
+        <LazyLoad>
+          <DefaultLayout />
+        </LazyLoad>
+      </ProtectedRoute>
     ),
     children: [...dashboardRoutes, ...humanResourceRoutes, ...profileRoutes],
   },

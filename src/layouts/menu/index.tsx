@@ -6,6 +6,8 @@ import {
   ProductIcon,
   ScheduleIcon,
   ServiceIcon,
+  WarningIcon,
+  HomeIcon,
 } from "@/components/base/icons";
 import { ShieldCheck as ShieldCheckIcon } from "lucide-react";
 
@@ -55,13 +57,35 @@ const menuItems: MenuItem[] = [
     path: "/app/human-resources",
   },
   {
-    key: "residents",
-    label: "QL dân cư và y tế",
-    icon: (isActive) => (
-      <ScheduleIcon height={22} width={22} isActive={isActive} />
-    ),
-
-    path: "/app/residents",
+    key: "alerts",
+    label: "Cảnh báo",
+    icon: <ScheduleIcon height={22} width={22} />,
+    badge: "2",
+    path: "/app/alerts",
+  },
+  {
+    key: "manage-reports",
+    label: "Quản lý phản ánh",
+    icon: <WarningIcon height={22} width={22} />,
+    path: "/app/manage-reports",
+  },
+  {
+    key: "household",
+    label: "Nhà ở & cư dân",
+    icon: <HomeIcon height={22} width={22} />,
+    path: "/app/household",
+  },
+  {
+    key: "reports",
+    label: "Báo cáo & Thống kê",
+    icon: <CategoryIcon height={22} width={22} />,
+    path: "/app/reports",
+  },
+  {
+    key: "damages",
+    label: "Quản lý thiệt hại",
+    icon: <CategoryIcon height={22} width={22} />,
+    path: "/app/damages",
   },
 ];
 
