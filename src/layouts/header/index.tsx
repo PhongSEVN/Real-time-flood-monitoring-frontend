@@ -1,5 +1,4 @@
-import { getDefaultWsUrl, realtimeSocket } from "@/services/sockets";
-import type { MenuProps } from "antd";
+import { Button, Modal, type MenuProps } from "antd";
 import Dropdown from "antd/es/dropdown/dropdown";
 import { LockKeyhole, Menu as MenuIcon, Power, UserRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -31,30 +30,11 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   const [now, setNow] = useState(() => new Date());
   const [isConnected, setIsConnected] = useState(false);
   const [alertsCount, setAlertsCount] = useState<number | null>(null);
-
+  const [isOpenModalLogout, setIsOpenModalLogout] = useState(false);
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000);
     return () => window.clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    realtimeSocket.connect(getDefaultWsUrl());
-    const unsubOpen = realtimeSocket.onOpen(() => setIsConnected(true));
-    const unsubClose = realtimeSocket.onClose(() => setIsConnected(false));
-    const unsubCount = realtimeSocket.on("alerts_count", (payload) => {
-      const n = typeof payload === "number" ? payload : Number(payload);
-      if (Number.isFinite(n)) setAlertsCount(n);
-    });
-
-    // optional: ask server for initial state
-    realtimeSocket.onOpen(() => realtimeSocket.send("get_alerts_count"));
-
-    return () => {
-      unsubOpen();
-      unsubClose();
-      unsubCount();
-      realtimeSocket.disconnect();
-    };
   }, []);
 
   const time = now.toLocaleTimeString("en-US", {
@@ -97,7 +77,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
       {
         label: (
           <div
-            // onClick={showLogoutModal}
+            onClick={() => setIsOpenModalLogout(true)}
             className="flex items-center gap-2 p-2"
           >
             <Power size={18} className="text-gray-700" />
@@ -111,63 +91,97 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   );
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center justify-between bg-[linear-gradient(90deg,#1a5d9f_0%,#1b75c8_100%)] px-6 text-white shadow-lg">
-      <div className="flex items-center gap-4 xl:gap-6">
-        {/* Hamburger button cho mobile */}
-        {onMenuToggle && (
-          <button
-            onClick={onMenuToggle}
-            className="xl:hidden grid h-10 w-10 place-items-center rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
-            aria-label="Mở menu"
-          >
-            <MenuIcon size={20} />
-          </button>
-        )}
-        <div className="flex items-center gap-3">
-          <span
-            className={`h-2.5 w-2.5 rounded-full ${
-              isConnected ? "bg-emerald-400" : "bg-rose-400"
-            }`}
-            title={
-              isConnected ? "Realtime: Connected" : "Realtime: Disconnected"
-            }
-          />
-          <div className="text-lg font-semibold tracking-wide">{time}</div>
-        </div>
-        <div className="rounded-full bg-white/15 px-3 py-1 text-sm">{date}</div>
-      </div>
+    <>
+      {/* Modal đổi mật khẩu */}
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3 rounded-full bg-white/10 px-4 py-1">
-          <div className="relative">
-            <BellIcon />
-            {alertsCount && alertsCount > 0 ? (
-              <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-[#0d2f56]">
-                {alertsCount > 99 ? "99+" : alertsCount}
-              </span>
-            ) : (
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
-            )}
+      {/* Modal đăng xuất */}
+      <Modal
+        open={isOpenModalLogout}
+        onCancel={() => setIsOpenModalLogout(false)}
+        title={<h1 className="text-2xl font-bold"> Đăng xuất</h1>}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              className="h-10!"
+              onClick={() => setIsOpenModalLogout(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={() => {
+                localStorage.removeItem("accessToken");
+                navigate("/login");
+              }}
+              type="primary"
+              className="h-10!"
+            >
+              Đăng xuất
+            </Button>
           </div>
-          <Dropdown
-            arrow
-            menu={{ items: dropdownItems }}
-            className="cursor-pointer"
-            placement="bottomRight"
-          >
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <span className="h-8 w-8 rounded-full bg-white/30">
-                <img
-                  src="/avatar-trang-4 1.png"
-                  alt="avatar"
-                  className="w-full h-full rounded-full"
-                />
-              </span>
-              <span>Admin</span>
-            </div>
-          </Dropdown>
+        }
+      >
+        <div>Bạn có chắc chắn muốn đăng xuất không?</div>
+      </Modal>
+      <header className="sticky top-0 z-1000 flex h-16 items-center justify-between bg-[linear-gradient(90deg,#1a5d9f_0%,#1b75c8_100%)] px-6 text-white shadow-lg">
+        <div className="flex items-center gap-4 xl:gap-6">
+          {/* Hamburger button cho mobile */}
+          {onMenuToggle && (
+            <button
+              onClick={onMenuToggle}
+              className="xl:hidden grid h-10 w-10 place-items-center rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10 transition"
+              aria-label="Mở menu"
+            >
+              <MenuIcon size={20} />
+            </button>
+          )}
+          <div className="flex items-center gap-3">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                isConnected ? "bg-emerald-400" : "bg-rose-400"
+              }`}
+              title={
+                isConnected ? "Realtime: Connected" : "Realtime: Disconnected"
+              }
+            />
+            <div className="text-lg font-semibold tracking-wide">{time}</div>
+          </div>
+          <div className="rounded-full bg-white/15 px-3 py-1 text-sm">
+            {date}
+          </div>
         </div>
-      </div>
-    </header>
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 rounded-full bg-white/10 px-4 py-1">
+            <div className="relative">
+              <BellIcon />
+              {alertsCount && alertsCount > 0 ? (
+                <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-amber-400 px-1 text-[11px] font-extrabold text-[#0d2f56]">
+                  {alertsCount > 99 ? "99+" : alertsCount}
+                </span>
+              ) : (
+                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400" />
+              )}
+            </div>
+            <Dropdown
+              arrow
+              menu={{ items: dropdownItems }}
+              className="cursor-pointer"
+              placement="bottomRight"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <span className="h-8 w-8 rounded-full bg-white/30">
+                  <img
+                    src="/avatar-trang-4 1.png"
+                    alt="avatar"
+                    className="w-full h-full rounded-full"
+                  />
+                </span>
+                <span>{user?.fullName}</span>
+              </div>
+            </Dropdown>
+          </div>
+        </div>
+      </header>
+    </>
   );
 }

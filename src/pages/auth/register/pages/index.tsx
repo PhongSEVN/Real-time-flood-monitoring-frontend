@@ -1,21 +1,36 @@
-import { Button, Checkbox, Form, Input, type FormProps } from "antd";
+import { Button, Checkbox, Form, Input, message, type FormProps } from "antd";
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { registerApi } from "../apis";
 import type { RegisterRequest } from "../interfaces";
 
 export default function Register() {
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirm, setIsConfirm] = useState(false);
-
+  const navigate = useNavigate();
   // Hàm xử lý đăng ký
   const handleRegister: FormProps<RegisterRequest>["onFinish"] = async (
     values
   ) => {
     setIsLoading(true);
     try {
-    console.log(values);
+      const data = {
+        fullName: values.fullName,
+        phoneNumber: values.phoneNumber,
+        email: values.email,
+        password: values.password,
+      };
+      const response = await registerApi(data);
+      if (response.success === true) {
+        message.success("Đăng ký thành công");
+        navigate("/login");
+      } else {
+        message.error(response.message);
+      }
+    } catch (error) {
+      message.error("Đăng ký thất bại");
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +116,7 @@ export default function Register() {
                   <Input
                     placeholder="Nhập họ và tên của bạn"
                     autoComplete="fullName"
-                    className="h-(--height-input-large) bg-[#F5F5F5] rounded-[10px]"
+                    className="h-10! bg-[#F5F5F5] rounded-[10px]"
                     allowClear
                     maxLength={50}
                   />
@@ -142,7 +157,7 @@ export default function Register() {
                   <Input
                     placeholder="Nhập số điện thoại"
                     autoComplete="phoneNumber"
-                    className="h-(--height-input-large) bg-[#F5F5F5] rounded-[10px]"
+                    className="h-10! bg-[#F5F5F5] rounded-[10px]"
                     maxLength={11}
                     allowClear
                   />
@@ -188,7 +203,7 @@ export default function Register() {
                   <Input
                     placeholder="Nhập email"
                     autoComplete="email"
-                    className="h-(--height-input-large) bg-[#F5F5F5] rounded-[10px]"
+                    className="h-10! bg-[#F5F5F5] rounded-[10px]"
                     maxLength={200}
                     allowClear
                   />
@@ -235,7 +250,7 @@ export default function Register() {
                   <Input.Password
                     placeholder="Nhập mật khẩu"
                     autoComplete="password"
-                    className="h-(--height-input-large) bg-[#F5F5F5] rounded-[10px]"
+                    className="h-10! bg-[#F5F5F5] rounded-[10px]"
                     iconRender={(version) =>
                       version ? (
                         <Eye
@@ -260,7 +275,7 @@ export default function Register() {
                 </Form.Item>
                 <Form.Item
                   required={false}
-                  name="rePassword"
+                  name={"rePassword"}
                   label={
                     <p className="lg:text-[16px] md:text-[15px] text-[14px] text-[#464646] font-medium">
                       Nhập lại mật khẩu
@@ -290,7 +305,7 @@ export default function Register() {
                   <Input.Password
                     placeholder="Xác nhận lại mật khẩu"
                     autoComplete="rePassword"
-                    className="h-(--height-input-large) bg-[#F5F5F5] rounded-[10px]"
+                    className="h-10! bg-[#F5F5F5] rounded-[10px]"
                     iconRender={(version) =>
                       version ? (
                         <Eye

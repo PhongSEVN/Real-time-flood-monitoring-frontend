@@ -1,22 +1,33 @@
-import { Button, Form, Modal, Tooltip } from "antd";
+import { Role } from "@/enums";
+import { useQuery } from "@tanstack/react-query";
+import { Button, Modal, Spin, Tooltip } from "antd";
 import { Edit3, KeyRound, X } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getProfileApi } from "../api";
 import FormManagerUpdateProfile from "../components/FormManagerProfile";
-
-export interface ProfileData {
-  fullName: string;
-  phoneNumber: string;
-  email: string;
-  avatar?: string;
-}
+import { ProfileStatus } from "../enum";
 
 export default function DetailProfile() {
   const navigate = useNavigate();
-  const [form] = Form.useForm<ProfileData>();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isOpenModalUpdate, setIsOpenModalUpdate] = useState(false);
+
+  const {
+    data: profileData,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      const response = await getProfileApi();
+      return response?.data;
+    },
+  });
+
+  if (isLoading) {
+    return <Spin />;
+  }
+
   return (
     <>
       {/* Modal cập nhật thông tin cá nhân */}
@@ -45,6 +56,8 @@ export default function DetailProfile() {
       >
         <FormManagerUpdateProfile
           onCancel={() => setIsOpenModalUpdate(false)}
+          initialValues={profileData}
+          onSuccess={() => refetch()}
         />
       </Modal>
 
@@ -84,55 +97,67 @@ export default function DetailProfile() {
             <ul className="flex flex-col gap-2">
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Họ và tên</span>
-                <span className="text-[16px] text-[#000000]">Nguyễn Văn A</span>
+                <span className="text-[16px] text-[#000000]">
+                  {profileData?.fullName}
+                </span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">
                   Số điện thoại
                 </span>
-                <span className="text-[16px] text-[#000000]">0347282803</span>
+                <span className="text-[16px] text-[#000000]">
+                  {profileData?.phoneNumber}
+                </span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Email</span>
                 <span className="text-[16px] text-[#000000]">
-                  nguyenvana@example.com
+                  {profileData?.email}
                 </span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Giới tính</span>
-                <span className="text-[16px] text-[#000000]">Nam</span>
+                <span className="text-[16px] text-[#000000]">
+                  {profileData?.gender}
+                </span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Ngày sinh</span>
-                <span className="text-[16px] text-[#000000]">03/03/2026</span>
+                <span className="text-[16px] text-[#000000]">
+                  {profileData?.birthDate}
+                </span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Địa chỉ</span>
                 <span className="text-[16px] text-[#000000]">
-                  123 Đường ABC, Quận XYZ, TP. HCM
+                  {profileData?.address}
                 </span>
               </li>
               <li className="flex items-center justify-between">
-                <span className="text-[16px] text-[#ACACAC]">
-                  Vị trí công việc
+                <span className="text-[16px] text-[#ACACAC]">Vai trò</span>
+                <span className="text-[16px] text-[#000000]">
+                  {profileData?.role === Role.OFFICIAL ? "Cán bộ" : "Người dân"}
                 </span>
-                <span className="text-[16px] text-[#000000]">Bác sĩ</span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Trạng thái</span>
-                <span className="text-[16px] text-[#000000]">
-                  Đang hoạt động
+                <span
+                  className={`text-[16px] ${
+                    profileData?.status === ProfileStatus.ACTIVE
+                      ? "text-green-500"
+                      : "text-shadow-amber-400"
+                  }`}
+                >
+                  {profileData?.status === ProfileStatus.ACTIVE
+                    ? "Đang hoạt động"
+                    : "Tạm ngừng hoạt động"}
                 </span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="text-[16px] text-[#ACACAC]">Ngày tạo</span>
-                <span className="text-[16px] text-[#000000]">03/03/2026</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span className="text-[16px] text-[#ACACAC]">
-                  Ngày cập nhật
+                <span className="text-[16px] text-[#000000]">
+                  {profileData?.createdAt}
                 </span>
-                <span className="text-[16px] text-[#000000]">03/03/2026</span>
               </li>
             </ul>
           </div>

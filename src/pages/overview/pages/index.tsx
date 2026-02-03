@@ -11,16 +11,26 @@ export default function Overview() {
     const stepMs = 50;
     const totalSteps = (countdownSeconds * 1000) / stepMs;
     let current = 0;
+
     const timer = setInterval(() => {
       current += 1;
       setProgress(Math.min(100, Math.round((current / totalSteps) * 100)));
+
       if (current >= totalSteps) {
         clearInterval(timer);
-        navigate("/app/dashboard", { replace: true });
+
+        const accessToken = localStorage.getItem("accessToken");
+
+        if (accessToken) {
+          navigate("/app/dashboard", { replace: true });
+        } else {
+          navigate("/login", { replace: true });
+        }
       }
     }, stepMs);
+
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [countdownSeconds, navigate]);
 
   const skip = () => navigate("/app/dashboard", { replace: true });
 
@@ -41,8 +51,9 @@ export default function Overview() {
             Khởi động nền tảng giám sát mưa, mực nước và cảnh báo ngập
           </div>
           <p className="text-sm text-white/80 sm:text-base">
-            Kết nối trạm đo, hiển thị bản đồ ngập, theo dõi lượng mưa 24h qua và nhận cảnh báo kịp
-            thời. Giao diện tối ưu cho PC, laptop và cả thiết bị di động.
+            Kết nối trạm đo, hiển thị bản đồ ngập, theo dõi lượng mưa 24h qua và
+            nhận cảnh báo kịp thời. Giao diện tối ưu cho PC, laptop và cả thiết
+            bị di động.
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -92,13 +103,19 @@ export default function Overview() {
         <div className="grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm shadow-inner sm:grid-cols-2 md:grid-cols-1">
           <div className="rounded-lg border border-white/10 bg-white/5 p-3">
             <div className="text-xs text-white/70">Kịch bản</div>
-            <div className="text-base font-semibold">Theo dõi mưa & cảnh báo ngập</div>
-            <div className="text-xs text-white/70">Cập nhật liên tục theo thời gian thực</div>
+            <div className="text-base font-semibold">
+              Theo dõi mưa & cảnh báo ngập
+            </div>
+            <div className="text-xs text-white/70">
+              Cập nhật liên tục theo thời gian thực
+            </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 p-3">
             <div className="text-xs text-white/70">Thiết bị</div>
             <div className="text-base font-semibold">Kết nối 5 bình</div>
-            <div className="text-xs text-white/70">Gateway đã hoạt động ổn định</div>
+            <div className="text-xs text-white/70">
+              Gateway đã hoạt động ổn định
+            </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 p-3">
             <div className="text-xs text-white/70">Biểu đồ nhanh</div>
@@ -111,7 +128,9 @@ export default function Overview() {
                 />
               ))}
             </div>
-            <div className="mt-1 text-[11px] text-white/60">Mực nước vs lượng mưa (giả lập)</div>
+            <div className="mt-1 text-[11px] text-white/60">
+              Mực nước vs lượng mưa (giả lập)
+            </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 p-3">
             <div className="text-xs text-white/70">Hành động nhanh</div>
@@ -126,4 +145,3 @@ export default function Overview() {
     </div>
   );
 }
-

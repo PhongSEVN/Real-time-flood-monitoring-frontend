@@ -5,7 +5,6 @@ import {
   Input,
   List,
   Modal,
-  Popconfirm,
   Progress,
   Radio,
   Select,
@@ -19,14 +18,12 @@ import "leaflet/dist/leaflet.css";
 import {
   AlertTriangle,
   CloudRain,
-  Eye,
   MapPin,
   MoreHorizontal,
-  Trash2,
   Upload as UploadIcon,
   Waves,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -40,12 +37,12 @@ import {
 import iconRetina from "leaflet/dist/images/marker-icon-2x.png";
 import iconMarker from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
+import { addReflectionApi } from "../api";
+import type { Reflection } from "../interfaces";
 
-const { Title, Text, Paragraph } = Typography;
-const { TextArea } = Input;
+const { Title, Text } = Typography;
 const { Option } = Select;
 
-// Setup Leaflet icons
 const defaultIcon = L.icon({
   iconRetinaUrl: iconRetina,
   iconUrl: iconMarker,
@@ -59,222 +56,265 @@ const defaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = defaultIcon;
 
-interface Report {
-  id: string;
-  type: string; // Keep for compatibility, default to 'flood' or specific types
-  eventType?: "rain" | "tide" | "flood" | "dyke_break" | "other";
-  severity?: "light" | "medium" | "emergency";
-  title: string;
-  description: string;
-  location: { lat: number; lng: number; address?: string };
-  waterLevel?: string;
-  floodStatus?: string;
-  damage?: string[];
-  images: any[];
-  status: "pending" | "approved" | "rejected";
-  timestamp: string;
-  score: number;
-}
-
 export default function CreateReportPage() {
   const [form] = Form.useForm();
-  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
-    null
-  );
+  const [location, setLocation] = useState<{
+    lat: number;
+    lng: number;
+    address?: string;
+  } | null>(null);
   const [fileList, setFileList] = useState<any[]>([]);
   const [trustScore, setTrustScore] = useState(0);
-  const [submittedReports, setSubmittedReports] = useState<Report[]>([]);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  // Dùng any[] tạm thời để tránh lỗi type vì interface Reflection chưa có id, status, timestamp, trustScore
+  const [submittedReports, setSubmittedReports] = useState<any[]>([]);
+  const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Calculate trust score based on form values
   const calculateScore = () => {
     const values = form.getFieldsValue();
     let score = 0;
-
-    // Core info
     if (values.address) score += 10;
     if (location) score += 20;
-
-    // Details
     if (values.eventType) score += 10;
     if (values.severity) score += 10;
-
-    // Description length
     if (values.description && values.description.length > 10) score += 10;
-
-    // Images uploaded: +30 (Critical evidence)
     if (fileList.length > 0) score += 30;
-
     setTrustScore(Math.min(score, 100));
   };
 
-  const handleValuesChange = () => {
-    calculateScore();
-  };
+  const handleValuesChange = () => calculateScore();
 
-  // Reverse Geocoding: Lat/Lng -> Address
   const fetchAddress = async (lat: number, lng: number) => {
     try {
-      const response = await fetch(
+      const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
       );
-      const data = await response.json();
-      if (data && data.display_name) {
+      const data = await res.json();
+      if (data?.display_name) {
         form.setFieldsValue({ address: data.display_name });
+        setLocation((prev) =>
+          prev ? { ...prev, address: data.display_name } : null
+        );
+        calculateScore();
       }
-    } catch (error) {
-      console.error("Error fetching address:", error);
+    } catch (err) {
+      console.error("Reverse geocoding error:", err);
     }
   };
 
-  // Forward Geocoding: Address -> Lat/Lng
   const fetchCoordinates = async () => {
-    const address = form.getFieldValue("address");
-    if (!address) {
-      message.warning("Vui lòng nhập địa chỉ trước!");
-      return;
-    }
+    const addr = form.getFieldValue("address");
+    if (!addr) return message.warning("Vui lòng nhập địa chỉ trước!");
 
     setLoadingLocation(true);
     try {
-      const response = await fetch(
+      const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          address
+          addr
         )}&limit=1`
       );
-      const data = await response.json();
-      if (data && data.length > 0) {
+      const data = await res.json();
+      if (data?.length > 0) {
         const { lat, lon } = data[0];
-        const newLocation = { lat: parseFloat(lat), lng: parseFloat(lon) };
-        setLocation(newLocation);
-        message.success("Đã tìm thấy vị trí trên bản đồ!");
+        setLocation({
+          lat: parseFloat(lat),
+          lng: parseFloat(lon),
+          address: addr,
+        });
+        message.success("Đã tìm thấy vị trí!");
         calculateScore();
       } else {
-        message.error("Không tìm thấy vị trí cho địa chỉ này!");
+        message.error("Không tìm thấy địa chỉ.");
       }
-    } catch (error) {
-      console.error("Error fetching coordinates:", error);
-      message.error("Lỗi khi tìm kiếm vị trí!");
+    } catch (err) {
+      console.error(err);
+      message.error("Lỗi khi tìm vị trí.");
     } finally {
       setLoadingLocation(false);
     }
   };
 
   const handleLocationSelect = (latlng: { lat: number; lng: number }) => {
-    setLocation(latlng);
+    setLocation({
+      lat: latlng.lat,
+      lng: latlng.lng,
+      address: location?.address,
+    });
     fetchAddress(latlng.lat, latlng.lng);
-    calculateScore();
     message.success("Đã ghim vị trí!");
   };
 
-  // Map view updater component
   function MapUpdater({
     center,
   }: {
     center: { lat: number; lng: number } | null;
   }) {
     const map = useMap();
-    useEffect(() => {
-      if (center) {
-        map.flyTo(center, 16);
-      }
-    }, [center, map]);
+    if (center) map.flyTo(center, 16);
     return null;
   }
 
-  // Map click handler component
   function LocationMarker() {
     useMapEvents({
       click(e: any) {
         handleLocationSelect(e.latlng);
       },
     });
-
-    return location === null ? null : (
-      <Marker position={location}>
+    return location ? (
+      <Marker position={[location.lat, location.lng]}>
         <Popup>Vị trí sự cố</Popup>
       </Marker>
-    );
+    ) : null;
   }
 
-  const handleSubmit = (values: any) => {
-    if (trustScore < 50) {
-      message.warning("Vui lòng cung cấp thêm thông tin để tăng độ xác thực!");
+  const handleSubmit = async (values: any) => {
+    if (!location?.lat || !location?.lng) {
+      message.error(
+        "Vui lòng chọn vị trí trên bản đồ hoặc xác định từ địa chỉ!"
+      );
       return;
     }
 
-    Modal.confirm({
-      title: "Xác nhận gửi báo cáo",
-      content:
-        "Bạn có chắc chắn muốn gửi thông tin này không? Hành động này sẽ được ghi lại trên hệ thống.",
-      okText: "Gửi ngay",
-      cancelText: "Xem lại",
-      centered: true,
-      onOk: () => {
-        const newReport: Report = {
-          id: Date.now().toString(),
-          type: "flood", // Defaulting to flood report as per UI
-          title: "Báo cáo: " + (values.address || "Chưa có địa chỉ"),
-          description: values.description,
-          location: {
-            lat: location?.lat || 10.8231,
-            lng: location?.lng || 106.6297,
-            address: values.address,
-          },
-          eventType: values.eventType,
-          severity: values.severity,
-          images: fileList,
-          status: "pending",
-          timestamp: new Date().toLocaleString("vi-VN"),
-          score: trustScore,
+    setLoading(true);
+    try {
+      const payload: Reflection = {
+        title:
+          values.title ||
+          values.description?.substring(0, 60) +
+            (values.description?.length > 60 ? "..." : "") ||
+          "Báo cáo mới",
+        description: values.description || "",
+        lat: location.lat,
+        lng: location.lng,
+        address: values.address || location.address || "",
+        eventType: values.eventType,
+        severity: values.severity,
+        images: fileList.map(
+          (file) =>
+            file.thumbUrl ||
+            URL.createObjectURL(file.originFileObj || file) ||
+            ""
+        ),
+      };
+
+      const res = await addReflectionApi(payload);
+
+      if (res.success) {
+        message.success("Báo cáo thông tin thành công");
+
+        // Tạo object cho lịch sử (dùng any hoặc mở rộng type nếu cần)
+        const newReport = {
+          ...payload,
+          reportId:
+            res.data?.reportId ||
+            res.data?.data?.reportId ||
+            Date.now().toString(),
+          status: res.data?.status || "PENDING",
+          timestamp: res.data?.timestamp || new Date().toLocaleString("vi-VN"),
+          trustScore: res.data?.trustScore || trustScore,
+          images: res.data?.images || payload.images, // ưu tiên URL từ server
         };
 
-        setSubmittedReports([newReport, ...submittedReports]);
-        message.success("Gửi báo cáo thành công!");
+        setSubmittedReports((prev) => [newReport, ...prev]);
 
-        // Reset form
         form.resetFields();
-        setFileList([]);
         setLocation(null);
+        setFileList([]);
         setTrustScore(0);
-      },
-    });
+      } else {
+        message.error(res.message || "Báo cáo thông tin thất bại");
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
+      message.error("Có lỗi xảy ra khi gửi báo cáo");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = (id: string) => {
-    setSubmittedReports((prev) => prev.filter((r) => r.id !== id));
-    message.success("Đã xóa phản ánh");
+    setSubmittedReports((prev) =>
+      prev.filter((r) => r.reportId !== id && r.id !== id)
+    );
+    message.success("Đã xóa khỏi lịch sử cục bộ");
   };
 
-  const getStatusTag = (status: string) => {
-    switch (status) {
-      case "pending":
+  const getStatusTag = (status?: string) => {
+    switch (status?.toUpperCase()) {
+      case "PENDING":
         return <Tag color="orange">Đang chờ duyệt</Tag>;
-      case "approved":
+      case "APPROVED":
         return <Tag color="green">Đã duyệt</Tag>;
-      case "rejected":
+      case "REJECTED":
         return <Tag color="red">Từ chối</Tag>;
       default:
-        return <Tag>Mới</Tag>;
+        return <Tag color="default">Mới</Tag>;
+    }
+  };
+
+  const getEventTypeIcon = (type?: string) => {
+    switch (type) {
+      case "rain":
+        return <CloudRain size={20} />;
+      case "tide":
+      case "flood":
+        return <Waves size={20} />;
+      default:
+        return <AlertTriangle size={20} />;
+    }
+  };
+
+  const getEventTypeLabel = (type?: string) => {
+    switch (type) {
+      case "rain":
+        return "Mưa";
+      case "tide":
+        return "Triều cường";
+      case "flood":
+        return "Ngập lụt";
+      case "dyke_break":
+        return "Vỡ đê";
+      default:
+        return "Khác";
+    }
+  };
+
+  const getSeverityLabel = (sev?: string) => {
+    switch (sev) {
+      case "light":
+        return "Nhẹ";
+      case "medium":
+        return "Trung bình";
+      case "emergency":
+        return "Khẩn cấp";
+      default:
+        return sev || "Chưa cập nhật";
+    }
+  };
+
+  const getSeverityColor = (sev?: string) => {
+    switch (sev) {
+      case "light":
+        return "green";
+      case "medium":
+        return "gold";
+      case "emergency":
+        return "red";
+      default:
+        return "default";
     }
   };
 
   return (
-    <div className="p-4 w-full mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <Title level={3} className="mb-0">
-            Đăng phản ánh/Sự kiện
-          </Title>
-        </div>
-      </div>
+    <div className="p-4">
+      <Title level={3}>Đăng phản ánh / Sự kiện</Title>
 
-      <div className="flex flex-col gap-6">
-        {/* Top Section: Map */}
-        <div className="w-full flex flex-col gap-4">
-          <div className="h-[500px] rounded-xl overflow-hidden shadow-sm border border-slate-200 relative z-0">
+      <div className=" gap-6">
+        {/* Map + Form */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="h-[500px] rounded-xl overflow-hidden border border-gray-200 shadow">
             <MapContainer
               center={[10.8231, 106.6297]}
               zoom={13}
@@ -282,46 +322,18 @@ export default function CreateReportPage() {
             >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
               <LocationMarker />
-              <MapUpdater center={location} />
+              <MapUpdater
+                center={
+                  location ? { lat: location.lat, lng: location.lng } : null
+                }
+              />
             </MapContainer>
-
-            {/* Map Controls Overlay (Visual only to match design) */}
-            <div className="absolute top-2 left-2 z-[1000] flex flex-col bg-white rounded-md shadow border border-slate-300">
-              <div className="w-8 h-8 flex items-center justify-center border-b border-slate-200 cursor-pointer hover:bg-slate-50">
-                +
-              </div>
-              <div className="w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                -
-              </div>
-            </div>
           </div>
 
-          <Card className="shadow-sm border-slate-200">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-4 h-4 rounded-full border-2 border-blue-500 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              </div>
-              <Text strong>Vị trí trên bản đồ</Text>
-            </div>
-            <div className="flex justify-between items-center">
-              <Text type="secondary" className="text-sm">
-                {location
-                  ? `Vị trí đã chọn: ${location.lat.toFixed(
-                      4
-                    )}, ${location.lng.toFixed(4)}`
-                  : "Vị trí đã chọn: Chưa chọn"}
-              </Text>
-              <Button size="small">Chọn vị trí</Button>
-            </div>
-          </Card>
-        </div>
-
-        {/* Bottom Section: Form */}
-        <div className="w-full">
-          <Card className="shadow-sm border-slate-200">
+          <Card>
             <Form
               form={form}
               layout="vertical"
@@ -329,12 +341,12 @@ export default function CreateReportPage() {
               onValuesChange={handleValuesChange}
             >
               <Form.Item
-                label="Địa chỉ"
                 name="address"
-                rules={[{ required: true, message: "Vui lòng nhập địa chỉ" }]}
+                label="Địa chỉ"
+                rules={[{ required: true }]}
               >
                 <Input
-                  placeholder="Ví dụ: 268 Lý Thường Kiệt, Quận 10, TP.HCM"
+                  placeholder="Ví dụ: 123 Đường ABC, Quận XYZ, TP.HCM"
                   onBlur={fetchCoordinates}
                   onPressEnter={(e) => {
                     e.preventDefault();
@@ -346,12 +358,9 @@ export default function CreateReportPage() {
                       type="text"
                       size="small"
                       loading={loadingLocation}
-                      className="text-slate-400"
                       onClick={fetchCoordinates}
                     >
-                      {loadingLocation
-                        ? "Đang tìm..."
-                        : "Xác định vị trí từ địa chỉ"}
+                      {loadingLocation ? "Đang tìm..." : "Tìm vị trí"}
                     </Button>
                   }
                 />
@@ -359,13 +368,11 @@ export default function CreateReportPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Form.Item
-                  label="Loại sự kiện"
                   name="eventType"
-                  rules={[
-                    { required: true, message: "Vui lòng chọn loại sự kiện" },
-                  ]}
+                  label="Loại sự kiện"
+                  rules={[{ required: true }]}
                 >
-                  <Select placeholder="Chọn loại sự kiện">
+                  <Select placeholder="Chọn loại">
                     <Option value="rain">Mưa</Option>
                     <Option value="tide">Triều cường</Option>
                     <Option value="flood">Ngập lụt</Option>
@@ -375,93 +382,61 @@ export default function CreateReportPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Mức độ"
                   name="severity"
-                  rules={[{ required: true, message: "Vui lòng chọn mức độ" }]}
+                  label="Mức độ"
+                  rules={[{ required: true }]}
                 >
-                  <Radio.Group className="w-full">
-                    <div className="flex gap-4">
-                      <Radio
-                        value="light"
-                        className="text-green-600 font-medium"
-                      >
-                        Nhẹ
-                      </Radio>
-                      <Radio
-                        value="medium"
-                        className="text-yellow-600 font-medium"
-                      >
-                        Trung bình
-                      </Radio>
-                      <Radio
-                        value="emergency"
-                        className="text-red-600 font-medium"
-                      >
-                        Khẩn cấp
-                      </Radio>
-                    </div>
+                  <Radio.Group className="flex gap-6">
+                    <Radio value="light">Nhẹ</Radio>
+                    <Radio value="medium">Trung bình</Radio>
+                    <Radio value="emergency">Khẩn cấp</Radio>
                   </Radio.Group>
                 </Form.Item>
               </div>
 
-              <Form.Item label="Hình ảnh / Video hiện trường">
+              <Form.Item label="Hình ảnh / Video">
                 <Upload
                   listType="picture"
                   fileList={fileList}
-                  onChange={({ fileList }) => {
-                    setFileList(fileList);
+                  onChange={({ fileList: newList }) => {
+                    setFileList(newList);
                     calculateScore();
                   }}
                   beforeUpload={() => false}
                   maxCount={5}
-                  className="w-full"
                 >
                   <Button icon={<UploadIcon size={16} />}>Chọn tệp</Button>
-                  <span className="ml-2 text-slate-400">
-                    Không có tệp nào được chọn
-                  </span>
                 </Upload>
               </Form.Item>
 
-              <Form.Item label="Ghi chú thêm" name="description">
-                <TextArea
+              <Form.Item
+                name="description"
+                label="Mô tả / Ghi chú"
+                rules={[{ required: true }]}
+              >
+                <Input.TextArea
                   rows={4}
-                  placeholder="Mô tả thêm về thời gian, hướng nước chảy, lưu ý cho người đi đường..."
                   maxLength={500}
+                  placeholder="Mô tả chi tiết sự cố..."
                 />
               </Form.Item>
 
-              <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-4">
-                <div className="flex items-center gap-2">
-                  <Text className="text-slate-500 text-sm">Độ tin cậy:</Text>
+              <div className="flex justify-between items-center pt-6 border-t">
+                <div className="flex items-center gap-3">
+                  <span className="w-[160px]">Độ tin cậy:</span>
                   <Progress
                     percent={trustScore}
-                    steps={5}
-                    strokeColor={
-                      trustScore < 50
-                        ? "#ff4d4f"
-                        : trustScore < 80
-                        ? "#faad14"
-                        : "#52c41a"
-                    }
+                    size="small"
                     showInfo={false}
-                    className="w-24 m-0"
+                    className="w-32"
                   />
-                  <Text
-                    strong
-                    className={`text-sm ${
-                      trustScore < 50 ? "text-red-500" : "text-green-500"
-                    }`}
-                  >
-                    {trustScore}/100
-                  </Text>
+                  <span>{trustScore}/100</span>
                 </div>
                 <Button
                   type="primary"
                   htmlType="submit"
-                  size="large"
-                  className="bg-blue-600 hover:bg-blue-700 px-8"
-                  disabled={!location && !form.getFieldValue("address")}
+                  loading={loading}
+                  disabled={!location?.lat}
                 >
                   Gửi báo cáo
                 </Button>
@@ -470,176 +445,83 @@ export default function CreateReportPage() {
           </Card>
         </div>
       </div>
-
-      {/* Submitted Reports List */}
-      <div className="mt-8">
-        <Title level={4} className="flex items-center gap-2">
-          <MoreHorizontal /> Lịch sử gửi tin
-        </Title>
+      {/* Lịch sử báo cáo */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <MoreHorizontal size={20} />
+          <Title level={4} className="!mb-0">
+            Lịch sử gửi tin
+          </Title>
+        </div>
 
         <List
           dataSource={submittedReports}
-          split={false}
-          className="space-y-3"
+          locale={{ emptyText: "Chưa có báo cáo nào được gửi" }}
           renderItem={(item) => (
             <List.Item className="!p-0 !border-0 mb-3">
-              <div
-                className="w-full bg-white p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group flex items-center gap-4"
+              <Card
+                hoverable
+                size="small"
                 onClick={() => {
                   setSelectedReport(item);
                   setIsDetailModalOpen(true);
                 }}
               >
-                {/* Icon/Image Placeholder */}
-                <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 text-slate-400">
-                  {item.eventType === "rain" ? (
-                    <CloudRain size={24} />
-                  ) : item.eventType === "tide" ? (
-                    <Waves size={24} />
-                  ) : item.eventType === "flood" ? (
-                    <Waves size={24} />
-                  ) : (
-                    <AlertTriangle size={24} />
-                  )}
-                </div>
-
-                {/* Main Content */}
-                <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                  {/* Title & Status */}
-                  <div className="md:col-span-5 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Text strong className="text-base" title={item.title}>
-                        {item.title}
+                <div className="flex gap-3 items-start">
+                  <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0">
+                    {getEventTypeIcon(item.eventType)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start gap-2">
+                      <Text strong className="line-clamp-2">
+                        {item.title ||
+                          item.description?.substring(0, 60) ||
+                          "Không có tiêu đề"}
                       </Text>
+                      {getStatusTag(item.status)}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <span>{item.timestamp}</span>
-                      <span className="hidden md:inline">•</span>
-                      <span className="hidden md:flex items-center gap-1 truncate">
+                    <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-2">
+                      <span className="flex items-center gap-1">
                         <MapPin size={12} />
-                        {item.location.lat.toFixed(4)},{" "}
-                        {item.location.lng.toFixed(4)}
+                        {item.lat?.toFixed(4)}, {item.lng?.toFixed(4)}
                       </span>
+                      <span>•</span>
+                      <span>{item.timestamp || "Vừa gửi"}</span>
                     </div>
                   </div>
-
-                  {/* Tags - Middle */}
-                  <div className="md:col-span-4 flex items-center gap-2 overflow-hidden">
-                    {getStatusTag(item.status)}
-                    {item.severity === "emergency" && (
-                      <Tag color="red" className="m-0">
-                        Khẩn cấp
-                      </Tag>
-                    )}
-                    {item.severity === "medium" && (
-                      <Tag color="gold" className="m-0">
-                        Trung bình
-                      </Tag>
-                    )}
-                    {item.severity === "light" && (
-                      <Tag color="green" className="m-0">
-                        Nhẹ
-                      </Tag>
-                    )}
-                    {item.eventType && (
-                      <Tag className="m-0">
-                        {item.eventType === "rain"
-                          ? "Mưa"
-                          : item.eventType === "tide"
-                          ? "Triều cường"
-                          : item.eventType === "flood"
-                          ? "Ngập lụt"
-                          : item.eventType === "dyke_break"
-                          ? "Vỡ đê"
-                          : "Khác"}
-                      </Tag>
-                    )}
-                  </div>
-
-                  {/* Description/Preview - Hidden on small, shown on large */}
-                  <div className="hidden md:col-span-3 md:block">
-                    <Text
-                      type="secondary"
-                      className="text-sm truncate block"
-                      style={{ maxWidth: "100%" }}
-                    >
-                      {item.description || "Không có mô tả"}
-                    </Text>
-                  </div>
                 </div>
-
-                {/* Actions */}
-                <div
-                  className="flex items-center gap-1 shrink-0 pl-2 border-l border-slate-100"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Button
-                    type="text"
-                    shape="circle"
-                    icon={
-                      <Eye
-                        size={18}
-                        className="text-slate-400 group-hover:text-blue-500"
-                      />
-                    }
-                    onClick={() => {
-                      setSelectedReport(item);
-                      setIsDetailModalOpen(true);
-                    }}
-                  />
-                  <Popconfirm
-                    title="Xóa tin này?"
-                    onConfirm={() => handleDelete(item.id)}
-                  >
-                    <Button
-                      type="text"
-                      danger
-                      shape="circle"
-                      icon={<Trash2 size={18} />}
-                    />
-                  </Popconfirm>
-                </div>
-              </div>
+              </Card>
             </List.Item>
           )}
-          locale={{ emptyText: "Chưa có tin nào được gửi" }}
         />
       </div>
 
-      {/* Detail Modal */}
+      {/* Modal chi tiết */}
       <Modal
         title="Chi tiết báo cáo"
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
         footer={null}
-        width={600}
+        width={640}
       >
         {selectedReport && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Title level={5} className="m-0">
-                {selectedReport.title}
+          <div className="space-y-5">
+            <div className="flex justify-between items-start">
+              <Title level={5} className="!mb-0">
+                {selectedReport.title ||
+                  selectedReport.description?.substring(0, 100) ||
+                  "Báo cáo sự kiện"}
               </Title>
               {getStatusTag(selectedReport.status)}
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded">
               <div>
                 <Text type="secondary" className="block text-xs">
                   Loại sự kiện
                 </Text>
                 <Text strong>
-                  {selectedReport.eventType === "rain" ? (
-                    <Tag color="blue">Mưa</Tag>
-                  ) : selectedReport.eventType === "tide" ? (
-                    <Tag color="purple">Triều cường</Tag>
-                  ) : selectedReport.eventType === "flood" ? (
-                    <Tag color="red">Ngập lụt</Tag>
-                  ) : selectedReport.eventType === "dyke_break" ? (
-                    <Tag color="orange">Vỡ đê</Tag>
-                  ) : (
-                    <Tag>Khác</Tag>
-                  )}
+                  {getEventTypeLabel(selectedReport.eventType)}
                 </Text>
               </div>
               <div>
@@ -648,24 +530,11 @@ export default function CreateReportPage() {
                 </Text>
                 <Text
                   strong
-                  style={{
-                    color:
-                      selectedReport.severity === "light"
-                        ? "green"
-                        : selectedReport.severity === "medium"
-                        ? "#ca8a04"
-                        : selectedReport.severity === "emergency"
-                        ? "red"
-                        : "inherit",
-                  }}
+                  className={`text-${getSeverityColor(
+                    selectedReport.severity
+                  )}-600`}
                 >
-                  {selectedReport.severity === "light"
-                    ? "Nhẹ"
-                    : selectedReport.severity === "medium"
-                    ? "Trung bình"
-                    : selectedReport.severity === "emergency"
-                    ? "Khẩn cấp"
-                    : "Chưa cập nhật"}
+                  {getSeverityLabel(selectedReport.severity)}
                 </Text>
               </div>
             </div>
@@ -674,69 +543,59 @@ export default function CreateReportPage() {
               <Text type="secondary" className="block text-xs mb-1">
                 Vị trí
               </Text>
-              <div className="flex items-center gap-2 text-blue-600">
-                <MapPin size={16} />
-                <a
-                  href={`https://www.google.com/maps?q=${selectedReport.location.lat},${selectedReport.location.lng}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  {selectedReport.location.address ||
-                    `Lat: ${selectedReport.location.lat.toFixed(
-                      6
-                    )}, Lng: ${selectedReport.location.lng.toFixed(6)}`}
-                </a>
-              </div>
+              <a
+                href={`https://www.google.com/maps?q=${
+                  selectedReport.lat || 0
+                },${selectedReport.lng || 0}`}
+                target="_blank"
+                className="text-blue-600 hover:underline flex items-center gap-1"
+              >
+                <MapPin size={14} />
+                {selectedReport.address ||
+                  `${(selectedReport.lat || 0).toFixed(6)}, ${(
+                    selectedReport.lng || 0
+                  ).toFixed(6)}`}
+              </a>
             </div>
 
             <div>
               <Text type="secondary" className="block text-xs mb-1">
-                Ghi chú thêm
+                Mô tả
               </Text>
-              <div className="bg-slate-50 p-3 rounded-lg text-slate-700 min-h-[60px]">
-                {selectedReport.description || "Không có ghi chú"}
+              <div className="bg-gray-50 p-3 rounded whitespace-pre-wrap">
+                {selectedReport.description || "Không có mô tả"}
               </div>
             </div>
 
-            {selectedReport.images.length > 0 && (
+            {selectedReport.images?.length > 0 && (
               <div>
                 <Text type="secondary" className="block text-xs mb-2">
-                  Hình ảnh đính kèm
+                  Hình ảnh
                 </Text>
                 <div className="grid grid-cols-3 gap-2">
-                  {selectedReport.images.map((file, idx) => (
-                    <div
-                      key={idx}
-                      className="aspect-square bg-slate-100 rounded overflow-hidden"
-                    >
-                      <img
-                        src={
-                          file.originFileObj
-                            ? URL.createObjectURL(file.originFileObj)
-                            : file.thumbUrl
-                        }
-                        alt="evidence"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                  {selectedReport.images.map((url: string, i: number) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt="evidence"
+                      className="w-full h-24 object-cover rounded border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.jpg";
+                      }}
+                    />
                   ))}
                 </div>
               </div>
             )}
 
-            <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-              <Text className="text-xs text-slate-400">
-                ID: {selectedReport.id}
-              </Text>
-              <Text
-                strong
-                className={
-                  selectedReport.score < 50 ? "text-red-500" : "text-green-500"
-                }
-              >
-                Độ tin cậy: {selectedReport.score}/100
-              </Text>
+            <div className="pt-4 border-t text-sm text-gray-500 flex justify-between">
+              <span>
+                Độ tin cậy:{" "}
+                <strong>{selectedReport.trustScore || trustScore}/100</strong>
+              </span>
+              <span>
+                ID: {selectedReport.reportId || selectedReport.id || "N/A"}
+              </span>
             </div>
           </div>
         )}

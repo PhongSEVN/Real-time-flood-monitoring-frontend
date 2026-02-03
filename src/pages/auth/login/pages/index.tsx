@@ -1,18 +1,34 @@
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, notification } from "antd";
 import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { loginApi } from "../apis";
 import type { LoginRequest } from "../interfaces";
 
 export default function Login() {
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
-
+  const navigate = useNavigate();
   // Hàm xử lý đăng nhập
   const handleLogin = async (values: LoginRequest) => {
     setIsLoading(true);
     try {
-    console.log(values);
+      const response = await loginApi(values);
+      console.log(response);
+      if (response.success === true) {
+        localStorage.setItem("accessToken", response.data.accessToken);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        notification.success({
+          message: "Đăng nhập thành công",
+          description: "Bạn đã đăng nhập thành công",
+        });
+        navigate("/app/dashboard");
+      } else {
+        notification.error({
+          message: "Đăng nhập thất bại",
+          description: response.message,
+        });
+      }
     } finally {
       setIsLoading(false);
     }

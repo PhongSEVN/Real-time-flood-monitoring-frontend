@@ -145,13 +145,6 @@ class RealtimeSocket {
 
 export const realtimeSocket = new RealtimeSocket();
 
-/**
- * Default WS URL:
- * - prefer Vite env: VITE_WS_URL (e.g. ws://localhost:8080/ws)
- */
-export function getDefaultWsUrl() {
-  const env = (import.meta as any).env as Record<string, string | undefined>;
-  return env.VITE_WS_URL ?? "ws://localhost:8080/ws";
-}
+
 
 
