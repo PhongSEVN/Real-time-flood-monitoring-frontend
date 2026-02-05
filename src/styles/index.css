@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  --color-header: #1a5d9f;
+  --color-menu: #0d2f56;
+  --color-surface: #f5f7fb;
+  --color-accent: #00b4db;
+  --color-accent-2: #0066cc;
+  --color-text: #4b5563;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-display: swap;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(
+    circle at 20% 20%,
+    #eef3fb,
+    #dce9f6 35%,
+    #c9d9ed 60%,
+    #c0d2e8
+  );
+  color: var(--color-text);
+  font-family: "Roboto", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b8bcc3;
+  border-radius: 8px;
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bdbdbd;
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track-piece {
+  background-color: #f1f1f1;
+  width: 8px;
+  height: 8px;
+}
+
+/* Ẩn scrollbar cho tất cả trình duyệt */
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Scrollbar ẩn mặc định, hiển thị khi hover */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide:hover {
+    -ms-overflow-style: auto;
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-hide:hover::-webkit-scrollbar {
+    display: block;
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-hide:hover::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+
+  .scrollbar-hide:hover::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .scrollbar-hide:hover::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+}
+
+.ant-tag {
+  display: flex;
+}
