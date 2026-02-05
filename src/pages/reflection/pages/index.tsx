@@ -46,7 +46,6 @@ import {
   deleteReflectionApi,
   getReflectionsApi,
 } from "../api";
-import type { Reflection } from "../interfaces";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -244,27 +243,30 @@ export default function CreateReportPage() {
       return;
     }
 
-    const payload: Reflection = {
-      title:
-        values.title ||
+    const formData = new FormData();
+    formData.append(
+      "title",
+      values.title ||
         values.description?.substring(0, 60) +
           (values.description?.length > 60 ? "..." : "") ||
-        "Báo cáo mới",
-      description: values.description || "",
-      lat: location.lat,
-      lng: location.lng,
-      address: values.address || location.address || "",
-      eventType: values.eventType,
-      severity: values.severity,
-      images: fileList.map(
-        (file) =>
-          file.thumbUrl ||
-          URL.createObjectURL(file.originFileObj || file) ||
-          ""
-      ),
-    };
+        "Báo cáo mới"
+    );
+    formData.append("description", values.description || "");
+    formData.append("lat", location.lat.toString());
+    formData.append("lng", location.lng.toString());
+    formData.append("address", values.address || location.address || "");
+    formData.append("eventType", values.eventType);
+    formData.append("severity", values.severity);
 
-    createReportMutation.mutate(payload);
+    if (fileList && fileList.length > 0) {
+      fileList.forEach((file) => {
+        if (file.originFileObj) {
+          formData.append("images", file.originFileObj);
+        }
+      });
+    }
+
+    createReportMutation.mutate(formData as any);
   };
 
   const handleDelete = (report: any) => {

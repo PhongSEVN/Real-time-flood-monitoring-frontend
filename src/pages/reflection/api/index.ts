@@ -4,10 +4,12 @@ import type { Reflection } from "../interfaces";
 
 const REPORT = "reports"
 // Api thêm phản ánh
-export const addReflectionApi = async (data: Reflection) => {
+export const addReflectionApi = async (data: Reflection | FormData) => {
+  const isFormData = data instanceof FormData;
   const response = await BASE_URL.post(`/${REPORT}`, data, {
     headers: {
       Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      "Content-Type": isFormData ? "multipart/form-data" : "application/json",
     },
   });
   return response.data;
