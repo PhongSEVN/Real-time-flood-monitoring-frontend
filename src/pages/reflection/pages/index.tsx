@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Card,
@@ -20,11 +21,13 @@ import {
   CloudRain,
   MapPin,
   MoreHorizontal,
+  Trash2,
   Upload as UploadIcon,
   Waves,
 } from "lucide-react";
 import { useState } from "react";
 import {
+  GeoJSON,
   MapContainer,
   Marker,
   Popup,
@@ -34,14 +37,20 @@ import {
 } from "react-leaflet";
 
 // Fix Leaflet icon issue
-import iconRetina from "leaflet/dist/images/marker-icon-2x.png";
+import { mapApi } from "@/apis/mapApi";
 import iconMarker from "leaflet/dist/images/marker-icon.png";
+import iconRetina from "leaflet/dist/images/marker-icon-2x.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
-import { addReflectionApi } from "../api";
+import {
+  addReflectionApi,
+  deleteReflectionApi,
+  getReflectionsApi,
+} from "../api";
 import type { Reflection } from "../interfaces";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { confirm } = Modal;
 
 const defaultIcon = L.icon({
   iconRetinaUrl: iconRetina,
@@ -58,6 +67,7 @@ L.Marker.prototype.options.icon = defaultIcon;
 
 export default function CreateReportPage() {
   const [form] = Form.useForm();
+  const queryClient = useQueryClient();
   const [location, setLocation] = useState<{
     lat: number;
     lng: number;
@@ -65,12 +75,57 @@ export default function CreateReportPage() {
   } | null>(null);
   const [fileList, setFileList] = useState<any[]>([]);
   const [trustScore, setTrustScore] = useState(0);
-  // Dùng any[] tạm thời để tránh lỗi type vì interface Reflection chưa có id, status, timestamp, trustScore
-  const [submittedReports, setSubmittedReports] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
-  const [loading, setLoading] = useState(false);
+
+  // Fetch Reports History
+  const { data: reportsData, isLoading: isLoadingReports } = useQuery({
+    queryKey: ["reports"],
+    queryFn: getReflectionsApi,
+  });
+
+  // Fetch Map Layers (Tam Binh)
+  const { data: mapData } = useQuery({
+    queryKey: ["map-layers"],
+    queryFn: mapApi.getAllLayers,
+  });
+
+  // Extract reports list from API response
+  const reportsList = Array.isArray(reportsData?.data)
+    ? reportsData.data
+    : Array.isArray(reportsData)
+    ? reportsData
+    : [];
+
+  // Mutation for creating report
+  const createReportMutation = useMutation({
+    mutationFn: addReflectionApi,
+    onSuccess: () => {
+      message.success("Báo cáo thông tin thành công");
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      form.resetFields();
+      setLocation(null);
+      setFileList([]);
+      setTrustScore(0);
+    },
+    onError: (error: any) => {
+      message.error(error?.message || "Báo cáo thông tin thất bại");
+    },
+  });
+
+  // Mutation for deleting report
+  const deleteReportMutation = useMutation({
+    mutationFn: deleteReflectionApi,
+    onSuccess: () => {
+      message.success("Đã xóa báo cáo");
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      if (isDetailModalOpen) setIsDetailModalOpen(false);
+    },
+    onError: (error: any) => {
+      message.error(error?.message || "Xóa báo cáo thất bại");
+    },
+  });
 
   const calculateScore = () => {
     const values = form.getFieldsValue();
@@ -169,7 +224,19 @@ export default function CreateReportPage() {
     ) : null;
   }
 
-  const handleSubmit = async (values: any) => {
+  const handleConfirmSubmit = (values: any) => {
+    confirm({
+      title: "Xác nhận gửi báo cáo?",
+      content: "Bạn có chắc chắn muốn gửi báo cáo này không?",
+      okText: "Gửi ngay",
+      cancelText: "Hủy",
+      onOk() {
+        handleSubmit(values);
+      },
+    });
+  };
+
+  const handleSubmit = (values: any) => {
     if (!location?.lat || !location?.lng) {
       message.error(
         "Vui lòng chọn vị trí trên bản đồ hoặc xác định từ địa chỉ!"
@@ -177,61 +244,46 @@ export default function CreateReportPage() {
       return;
     }
 
-    setLoading(true);
-    try {
-      const payload: Reflection = {
-        title:
-          values.title ||
-          values.description?.substring(0, 60) +
-            (values.description?.length > 60 ? "..." : "") ||
-          "Báo cáo mới",
-        description: values.description || "",
-        lat: location.lat,
-        lng: location.lng,
-        address: values.address || location.address || "",
-        eventType: values.eventType,
-        severity: values.severity,
-        images: fileList.map(
-          (file) =>
-            file.thumbUrl ||
-            URL.createObjectURL(file.originFileObj || file) ||
-            ""
-        ),
-      };
+    const payload: Reflection = {
+      title:
+        values.title ||
+        values.description?.substring(0, 60) +
+          (values.description?.length > 60 ? "..." : "") ||
+        "Báo cáo mới",
+      description: values.description || "",
+      lat: location.lat,
+      lng: location.lng,
+      address: values.address || location.address || "",
+      eventType: values.eventType,
+      severity: values.severity,
+      images: fileList.map(
+        (file) =>
+          file.thumbUrl ||
+          URL.createObjectURL(file.originFileObj || file) ||
+          ""
+      ),
+    };
 
-      const res = await addReflectionApi(payload);
+    createReportMutation.mutate(payload);
+  };
 
-      if (res.success) {
-        message.success("Báo cáo thông tin thành công");
-
-        // Tạo object cho lịch sử (dùng any hoặc mở rộng type nếu cần)
-        const newReport = {
-          ...payload,
-          reportId:
-            res.data?.reportId ||
-            res.data?.data?.reportId ||
-            Date.now().toString(),
-          status: res.data?.status || "PENDING",
-          timestamp: res.data?.timestamp || new Date().toLocaleString("vi-VN"),
-          trustScore: res.data?.trustScore || trustScore,
-          images: res.data?.images || payload.images, // ưu tiên URL từ server
-        };
-
-        setSubmittedReports((prev) => [newReport, ...prev]);
-
-        form.resetFields();
-        setLocation(null);
-        setFileList([]);
-        setTrustScore(0);
-      } else {
-        message.error(res.message || "Báo cáo thông tin thất bại");
-      }
-    } catch (error) {
-      console.error("Submit error:", error);
-      message.error("Có lỗi xảy ra khi gửi báo cáo");
-    } finally {
-      setLoading(false);
-    }
+  const handleDelete = (report: any) => {
+    confirm({
+      title: "Xác nhận xóa",
+      content: "Bạn có chắc chắn muốn xóa báo cáo này không?",
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk() {
+        // Use reportId or id depending on API response structure
+        const id = report.reportId || report.id || report._id;
+        if (id) {
+          deleteReportMutation.mutate(id);
+        } else {
+          message.error("Không tìm thấy ID báo cáo");
+        }
+      },
+    });
   };
 
   const getStatusTag = (status?: string) => {
@@ -300,23 +352,58 @@ export default function CreateReportPage() {
     }
   };
 
+  // Map Config for Tam Binh
+  const mapCenter: [number, number] = [10.8521, 106.7483];
+  const mapBounds = [
+    [10.8400, 106.7300], // Tây Nam
+    [10.8700, 106.7700], // Đông Bắc
+  ];
+
+  const geoJsonStyle = (feature: any) => {
+    if (
+      feature.geometry.type === "MultiLineString" ||
+      feature.geometry.type === "LineString"
+    ) {
+      return { color: "#3b82f6", weight: 4 };
+    }
+    if (
+      feature.geometry.type === "MultiPolygon" ||
+      feature.geometry.type === "Polygon"
+    ) {
+      return {
+        color: "#0ea5e9",
+        fillColor: "#0ea5e9",
+        fillOpacity: 0.3,
+        weight: 1,
+      };
+    }
+    return {};
+  };
+
   return (
     <div className="p-4">
       <Title level={3}>Đăng phản ánh / Sự kiện</Title>
 
-      <div className=" gap-6">
+      <div className="gap-6">
         {/* Map + Form */}
         <div className="lg:col-span-2 space-y-6">
           <div className="h-[500px] rounded-xl overflow-hidden border border-gray-200 shadow">
             <MapContainer
-              center={[10.8231, 106.6297]}
-              zoom={13}
-              style={{ height: "100%", width: "100%" }}
+              center={mapCenter}
+              zoom={15}
+              className="h-full w-full"
+              scrollWheelZoom={true}
+              maxBounds={mapBounds}
+              minZoom={14}
+              maxZoom={18}
             >
               <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               />
+              {mapData?.data && (
+                <GeoJSON data={mapData.data} style={geoJsonStyle} />
+              )}
               <LocationMarker />
               <MapUpdater
                 center={
@@ -330,7 +417,7 @@ export default function CreateReportPage() {
             <Form
               form={form}
               layout="vertical"
-              onFinish={handleSubmit}
+              onFinish={handleConfirmSubmit}
               onValuesChange={handleValuesChange}
             >
               <Form.Item
@@ -428,7 +515,7 @@ export default function CreateReportPage() {
                 <Button
                   type="primary"
                   htmlType="submit"
-                  loading={loading}
+                  loading={createReportMutation.isPending}
                   disabled={!location?.lat}
                 >
                   Gửi báo cáo
@@ -439,7 +526,7 @@ export default function CreateReportPage() {
         </div>
       </div>
       {/* Lịch sử báo cáo */}
-      <div className="space-y-4">
+      <div className="space-y-4 mt-8">
         <div className="flex items-center gap-2">
           <MoreHorizontal size={20} />
           <Title level={4} className="!mb-0">
@@ -448,9 +535,10 @@ export default function CreateReportPage() {
         </div>
 
         <List
-          dataSource={submittedReports}
+          loading={isLoadingReports}
+          dataSource={reportsList}
           locale={{ emptyText: "Chưa có báo cáo nào được gửi" }}
-          renderItem={(item) => (
+          renderItem={(item: any) => (
             <List.Item className="!p-0 !border-0 mb-3">
               <Card
                 hoverable
@@ -471,7 +559,19 @@ export default function CreateReportPage() {
                           item.description?.substring(0, 60) ||
                           "Không có tiêu đề"}
                       </Text>
-                      {getStatusTag(item.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusTag(item.status)}
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<Trash2 size={16} />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item);
+                          }}
+                        />
+                      </div>
                     </div>
                     <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-2">
                       <span className="flex items-center gap-1">
@@ -479,7 +579,12 @@ export default function CreateReportPage() {
                         {item.lat?.toFixed(4)}, {item.lng?.toFixed(4)}
                       </span>
                       <span>•</span>
-                      <span>{item.timestamp || "Vừa gửi"}</span>
+                      <span>
+                        {item.timestamp ||
+                          (item.created_at
+                            ? new Date(item.created_at).toLocaleString("vi-VN")
+                            : "Vừa gửi")}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -494,7 +599,19 @@ export default function CreateReportPage() {
         title="Chi tiết báo cáo"
         open={isDetailModalOpen}
         onCancel={() => setIsDetailModalOpen(false)}
-        footer={null}
+        footer={[
+          <Button
+            key="delete"
+            danger
+            icon={<Trash2 size={16} />}
+            onClick={() => handleDelete(selectedReport)}
+          >
+            Xóa báo cáo
+          </Button>,
+          <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
+            Đóng
+          </Button>,
+        ]}
         width={640}
       >
         {selectedReport && (
@@ -587,7 +704,11 @@ export default function CreateReportPage() {
                 <strong>{selectedReport.trustScore || trustScore}/100</strong>
               </span>
               <span>
-                ID: {selectedReport.reportId || selectedReport.id || "N/A"}
+                ID:{" "}
+                {selectedReport.reportId ||
+                  selectedReport.id ||
+                  selectedReport._id ||
+                  "N/A"}
               </span>
             </div>
           </div>

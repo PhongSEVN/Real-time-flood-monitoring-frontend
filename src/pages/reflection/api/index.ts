@@ -12,3 +12,23 @@ export const addReflectionApi = async (data: Reflection) => {
   });
   return response.data;
 };
+
+// Api lấy danh sách phản ánh
+export const getReflectionsApi = async () => {
+  const response = await BASE_URL.get(`/${REPORT}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+    },
+  });
+  return response.data;
+};
+
+// Api xóa phản ánh
+export const deleteReflectionApi = async (id: string) => {
+  const response = await BASE_URL.delete(`/${REPORT}/${id}`, {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+    },
+  });
+  return response.data;
+};
