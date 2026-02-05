@@ -24,7 +24,6 @@ interface Report {
   images: any[];
   status: "pending" | "approved" | "rejected";
   timestamp: string;
-  score: number;
 }
 
 export default function VerificationPage() {
@@ -48,7 +47,6 @@ export default function VerificationPage() {
       images: [],
       status: "pending",
       timestamp: new Date().toLocaleString("vi-VN"),
-      score: 30,
     },
     {
       id: "2",
@@ -65,7 +63,6 @@ export default function VerificationPage() {
       images: [],
       status: "approved",
       timestamp: new Date(Date.now() - 3600000).toLocaleString("vi-VN"),
-      score: 85,
     },
     {
       id: "3",
@@ -82,7 +79,6 @@ export default function VerificationPage() {
       images: [],
       status: "pending",
       timestamp: new Date(Date.now() - 7200000).toLocaleString("vi-VN"),
-      score: 60,
     },
   ]);
 
@@ -445,36 +441,7 @@ export default function VerificationPage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-              <span className="text-xs text-slate-400">
-                ID: {selectedReport.id}
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Độ tin cậy:</span>
-                <Progress
-                  percent={selectedReport.score}
-                  steps={10}
-                  strokeColor={
-                    selectedReport.score < 50
-                      ? "#ff4d4f"
-                      : selectedReport.score < 80
-                      ? "#faad14"
-                      : "#52c41a"
-                  }
-                  showInfo={false}
-                  className="w-24 m-0"
-                />
-                <span
-                  className={`text-sm font-semibold ${
-                    selectedReport.score < 50
-                      ? "text-red-500"
-                      : "text-green-500"
-                  }`}
-                >
-                  {selectedReport.score}/100
-                </span>
-              </div>
-            </div>
+            {/* Trust score removed */}
           </div>
         )}
       </Modal>

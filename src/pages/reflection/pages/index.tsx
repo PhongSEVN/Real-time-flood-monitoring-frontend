@@ -25,7 +25,7 @@ import {
   Upload as UploadIcon,
   Waves,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   GeoJSON,
   MapContainer,
@@ -73,15 +73,32 @@ export default function CreateReportPage() {
     address?: string;
   } | null>(null);
   const [fileList, setFileList] = useState<any[]>([]);
-  const [trustScore, setTrustScore] = useState(0);
+  const [reliability, setReliability] = useState(0);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [fetchingAddress, setFetchingAddress] = useState(false);
 
-  // Fetch Reports History
-  const { data: reportsData, isLoading: isLoadingReports } = useQuery({
+  const {
+    data: reportsData,
+    isLoading: isLoadingReports,
+    // refetch, // Unused
+  } = useQuery({
     queryKey: ["reports"],
     queryFn: getReflectionsApi,
+    select: (data) =>
+      (Array.isArray(data) ? data : data?.data || []).map((item: any) => {
+        const loc = item.location || {};
+        return {
+          ...item,
+          location: {
+            lat: loc.lat || item.lat || item.latitude,
+            lng: loc.lng || item.lng || item.longitude || item.lon,
+            address: loc.address || item.address || item.full_address || item.location_name,
+          },
+          images: Array.isArray(item.images) ? item.images : [],
+        };
+      }),
   });
 
   // Fetch Map Layers (Tam Binh)
@@ -106,10 +123,22 @@ export default function CreateReportPage() {
       form.resetFields();
       setLocation(null);
       setFileList([]);
-      setTrustScore(0);
     },
     onError: (error: any) => {
-      message.error(error?.message || "Báo cáo thông tin thất bại");
+      console.error("Create report error:", error);
+      const errorData = error?.response?.data;
+      
+      Modal.error({
+        title: "Lỗi gửi báo cáo",
+        content: (
+          <div className="max-h-[300px] overflow-auto">
+            <p>Chi tiết lỗi từ hệ thống:</p>
+            <pre className="bg-gray-100 p-2 rounded text-xs">
+              {JSON.stringify(errorData, null, 2)}
+            </pre>
+          </div>
+        ),
+      });
     },
   });
 
@@ -122,25 +151,50 @@ export default function CreateReportPage() {
       if (isDetailModalOpen) setIsDetailModalOpen(false);
     },
     onError: (error: any) => {
-      message.error(error?.message || "Xóa báo cáo thất bại");
+      console.error("Delete report error:", error);
+      message.error(
+        error?.response?.data?.message || error?.message || "Xóa báo cáo thất bại"
+      );
     },
   });
 
-  const calculateScore = () => {
-    const values = form.getFieldsValue();
+  const calculateReliability = () => {
     let score = 0;
-    if (values.address) score += 10;
-    if (location) score += 20;
-    if (values.eventType) score += 10;
-    if (values.severity) score += 10;
-    if (values.description && values.description.length > 10) score += 10;
-    if (fileList.length > 0) score += 30;
-    setTrustScore(Math.min(score, 100));
+    const values = form.getFieldsValue();
+    
+    // 1. Vị trí (40%)
+    if (location?.lat && location?.lng) {
+      score += 40;
+    }
+
+    // 2. Hình ảnh (30%)
+    if (fileList.length > 0) {
+      score += 20;
+      if (fileList.length >= 2) score += 10;
+    }
+
+    // 3. Mô tả (20%)
+    const desc = values.description || "";
+    if (desc.length > 10) score += 10;
+    if (desc.length > 50) score += 10;
+
+    // 4. Thông tin phân loại (10%)
+    if (values.eventType) score += 5;
+    if (values.severity) score += 5;
+
+    setReliability(score);
   };
 
-  const handleValuesChange = () => calculateScore();
+  useEffect(() => {
+    calculateReliability();
+  }, [location, fileList]);
+
+  const handleValuesChange = () => {
+    calculateReliability();
+  };
 
   const fetchAddress = async (lat: number, lng: number) => {
+    setFetchingAddress(true);
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
@@ -148,13 +202,16 @@ export default function CreateReportPage() {
       const data = await res.json();
       if (data?.display_name) {
         form.setFieldsValue({ address: data.display_name });
-        setLocation((prev) =>
-          prev ? { ...prev, address: data.display_name } : null
-        );
-        calculateScore();
+        
+        setLocation((prev) => {
+          const newLocation = prev ? { ...prev, address: data.display_name } : null;
+          return newLocation;
+        });
       }
     } catch (err) {
       console.error("Reverse geocoding error:", err);
+    } finally {
+      setFetchingAddress(false);
     }
   };
 
@@ -172,13 +229,13 @@ export default function CreateReportPage() {
       const data = await res.json();
       if (data?.length > 0) {
         const { lat, lon } = data[0];
-        setLocation({
+        const newLocation = {
           lat: parseFloat(lat),
           lng: parseFloat(lon),
           address: addr,
-        });
+        };
+        setLocation(newLocation);
         message.success("Đã tìm thấy vị trí!");
-        calculateScore();
       } else {
         message.error("Không tìm thấy địa chỉ.");
       }
@@ -191,11 +248,12 @@ export default function CreateReportPage() {
   };
 
   const handleLocationSelect = (latlng: { lat: number; lng: number }) => {
-    setLocation({
+    const newLocation = {
       lat: latlng.lat,
       lng: latlng.lng,
       address: location?.address,
-    });
+    };
+    setLocation(newLocation);
     fetchAddress(latlng.lat, latlng.lng);
     message.success("Đã ghim vị trí!");
   };
@@ -223,6 +281,15 @@ export default function CreateReportPage() {
     ) : null;
   }
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleConfirmSubmit = (values: any) => {
     confirm({
       title: "Xác nhận gửi báo cáo?",
@@ -235,7 +302,7 @@ export default function CreateReportPage() {
     });
   };
 
-  const handleSubmit = (values: any) => {
+  const handleSubmit = async (values: any) => {
     if (!location?.lat || !location?.lng) {
       message.error(
         "Vui lòng chọn vị trí trên bản đồ hoặc xác định từ địa chỉ!"
@@ -243,30 +310,55 @@ export default function CreateReportPage() {
       return;
     }
 
-    const formData = new FormData();
-    formData.append(
-      "title",
-      values.title ||
-        values.description?.substring(0, 60) +
-          (values.description?.length > 60 ? "..." : "") ||
-        "Báo cáo mới"
-    );
-    formData.append("description", values.description || "");
-    formData.append("lat", location.lat.toString());
-    formData.append("lng", location.lng.toString());
-    formData.append("address", values.address || location.address || "");
-    formData.append("eventType", values.eventType);
-    formData.append("severity", values.severity);
-
+    const images: string[] = [];
     if (fileList && fileList.length > 0) {
-      fileList.forEach((file) => {
-        if (file.originFileObj) {
-          formData.append("images", file.originFileObj);
-        }
-      });
+      try {
+        const promises = fileList.map((file) => {
+          if (file.originFileObj) {
+            return fileToBase64(file.originFileObj);
+          }
+          return Promise.resolve("");
+        });
+        const results = await Promise.all(promises);
+        results.forEach((res) => {
+          if (res) images.push(res);
+        });
+      } catch (error) {
+        console.error("Error converting images:", error);
+        message.error("Lỗi khi xử lý hình ảnh");
+        return;
+      }
     }
 
-    createReportMutation.mutate(formData as any);
+    // Calculate the final score right here to ensure accuracy
+    
+    const payload = {
+      title:
+        values.title ||
+        values.description?.substring(0, 60) +
+          (values.description?.length > 60 ? "..." : "") ||
+        "Báo cáo mới",
+      description: values.description || "",
+      location: {
+        lat: Number(location.lat),
+        lng: Number(location.lng),
+        address: values.address || location.address || "",
+      },
+      // Backward compatibility for scoring
+      lat: Number(location.lat),
+      lng: Number(location.lng),
+      latitude: Number(location.lat),
+      longitude: Number(location.lng),
+      lon: Number(location.lng),
+      address: values.address || location.address || "",
+      
+      eventType: values.eventType,
+      severity: values.severity,
+      images: images,
+    };
+
+    console.log("Submitting payload:", JSON.stringify(payload, null, 2));
+    createReportMutation.mutate(payload as any);
   };
 
   const handleDelete = (report: any) => {
@@ -301,57 +393,72 @@ export default function CreateReportPage() {
     }
   };
 
+  const getEventTypeLabel = (type?: string) => {
+    switch (type) {
+      case "RAIN":
+        return "Mưa";
+      case "TIDE":
+        return "Triều cường";
+      case "FLOOD":
+        return "Ngập lụt";
+      case "DYKE_BREAK":
+        return "Vỡ đê";
+      case "OTHER":
+        return "Khác";
+      default:
+        return type || "Chưa cập nhật";
+    }
+  };
+
   const getEventTypeIcon = (type?: string) => {
     switch (type) {
-      case "rain":
+      case "RAIN":
         return <CloudRain size={20} />;
-      case "tide":
-      case "flood":
+      case "TIDE":
+      case "FLOOD":
         return <Waves size={20} />;
       default:
         return <AlertTriangle size={20} />;
     }
   };
 
-  const getEventTypeLabel = (type?: string) => {
-    switch (type) {
-      case "rain":
-        return "Mưa";
-      case "tide":
-        return "Triều cường";
-      case "flood":
-        return "Ngập lụt";
-      case "dyke_break":
-        return "Vỡ đê";
-      default:
-        return "Khác";
-    }
-  };
-
   const getSeverityLabel = (sev?: string) => {
-    switch (sev) {
-      case "light":
+    const s = sev?.toUpperCase();
+    switch (s) {
+      case "LOW":
+      case "LIGHT":
         return "Nhẹ";
-      case "medium":
+      case "MEDIUM":
         return "Trung bình";
-      case "emergency":
-        return "Khẩn cấp";
+      case "HIGH":
+      case "EMERGENCY":
+        return "Nặng";
       default:
         return sev || "Chưa cập nhật";
     }
   };
 
-  const getSeverityColor = (sev?: string) => {
-    switch (sev) {
-      case "light":
-        return "green";
-      case "medium":
-        return "gold";
-      case "emergency":
-        return "red";
+  const getSeverityColorCode = (sev?: string) => {
+    const s = sev?.toUpperCase();
+    switch (s) {
+      case "LOW":
+      case "LIGHT":
+        return "#16a34a"; // green-600
+      case "MEDIUM":
+        return "#ca8a04"; // yellow-600
+      case "HIGH":
+      case "EMERGENCY":
+        return "#dc2626"; // red-600
       default:
-        return "default";
+        return "#4b5563"; // gray-600
     }
+  };
+
+  const getImageSrc = (url: string) => {
+    if (!url) return "/placeholder.jpg";
+    if (url.startsWith("http") || url.startsWith("data:")) return url;
+    // Assume base64 jpeg if no prefix
+    return `data:image/jpeg;base64,${url}`;
   };
 
   // Map Config for Tam Binh
@@ -455,11 +562,11 @@ export default function CreateReportPage() {
                   rules={[{ required: true }]}
                 >
                   <Select placeholder="Chọn loại">
-                    <Option value="rain">Mưa</Option>
-                    <Option value="tide">Triều cường</Option>
-                    <Option value="flood">Ngập lụt</Option>
-                    <Option value="dyke_break">Vỡ đê</Option>
-                    <Option value="other">Khác</Option>
+                    <Option value="RAIN">Mưa</Option>
+                    <Option value="TIDE">Triều cường</Option>
+                    <Option value="FLOOD">Ngập lụt</Option>
+                    <Option value="DYKE_BREAK">Vỡ đê</Option>
+                    <Option value="OTHER">Khác</Option>
                   </Select>
                 </Form.Item>
 
@@ -469,9 +576,9 @@ export default function CreateReportPage() {
                   rules={[{ required: true }]}
                 >
                   <Radio.Group className="flex gap-6">
-                    <Radio value="light">Nhẹ</Radio>
-                    <Radio value="medium">Trung bình</Radio>
-                    <Radio value="emergency">Khẩn cấp</Radio>
+                    <Radio value="LOW">Nhẹ</Radio>
+                    <Radio value="MEDIUM">Trung bình</Radio>
+                    <Radio value="HIGH">Khẩn cấp</Radio>
                   </Radio.Group>
                 </Form.Item>
               </div>
@@ -482,7 +589,6 @@ export default function CreateReportPage() {
                   fileList={fileList}
                   onChange={({ fileList: newList }) => {
                     setFileList(newList);
-                    calculateScore();
                   }}
                   beforeUpload={() => false}
                   maxCount={5}
@@ -503,24 +609,35 @@ export default function CreateReportPage() {
                 />
               </Form.Item>
 
-              <div className="flex justify-between items-center pt-6 border-t">
-                <div className="flex items-center gap-3">
-                  <span className="w-[160px]">Độ tin cậy:</span>
-                  <Progress
-                    percent={trustScore}
-                    size="small"
-                    showInfo={false}
-                    className="w-32"
-                  />
-                  <span>{trustScore}/100</span>
+              <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex justify-between mb-2">
+                   <Text strong>Độ tin cậy của tin báo:</Text>
+                   <Text strong style={{ color: reliability > 70 ? '#52c41a' : reliability > 40 ? '#faad14' : '#ff4d4f' }}>
+                     {reliability}%
+                   </Text>
                 </div>
+                <div className="w-full">
+                  <Progress 
+                    percent={reliability} 
+                    status={reliability === 100 ? 'success' : 'normal'} 
+                    strokeColor={reliability > 70 ? '#52c41a' : reliability > 40 ? '#faad14' : '#ff4d4f'} 
+                    showInfo={false}
+                    className="!m-0 !w-full"
+                  />
+                </div>
+                <Text type="secondary" className="text-xs mt-1 block">
+                  * Thêm hình ảnh và mô tả chi tiết để tăng độ tin cậy.
+                </Text>
+              </div>
+
+              <div className="flex justify-between items-center pt-6 border-t">
                 <Button
                   type="primary"
                   htmlType="submit"
-                  loading={createReportMutation.isPending}
-                  disabled={!location?.lat}
+                  loading={createReportMutation.isPending || fetchingAddress}
+                  disabled={!location?.lat || fetchingAddress}
                 >
-                  Gửi báo cáo
+                  {fetchingAddress ? "Đang lấy địa chỉ..." : "Gửi báo cáo"}
                 </Button>
               </div>
             </Form>
@@ -576,9 +693,16 @@ export default function CreateReportPage() {
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-2">
-                      <span className="flex items-center gap-1">
-                        <MapPin size={12} />
-                        {item.lat?.toFixed(4)}, {item.lng?.toFixed(4)}
+                      <span className="flex items-center gap-1 max-w-[200px] truncate" title={item.location?.address || item.address}>
+                        <MapPin size={12} className="shrink-0" />
+                        {item.location?.address || item.address ? (
+                           <span>{item.location?.address || item.address}</span>
+                        ) : (
+                           <span>
+                             {(item.location?.lat || item.lat || 0).toFixed(4)},{" "}
+                             {(item.location?.lng || item.lng || 0).toFixed(4)}
+                           </span>
+                        )}
                       </span>
                       <span>•</span>
                       <span>
@@ -642,9 +766,7 @@ export default function CreateReportPage() {
                 </Text>
                 <Text
                   strong
-                  className={`text-${getSeverityColor(
-                    selectedReport.severity
-                  )}-600`}
+                  style={{ color: getSeverityColorCode(selectedReport.severity) }}
                 >
                   {getSeverityLabel(selectedReport.severity)}
                 </Text>
@@ -657,16 +779,33 @@ export default function CreateReportPage() {
               </Text>
               <a
                 href={`https://www.google.com/maps?q=${
-                  selectedReport.lat || 0
-                },${selectedReport.lng || 0}`}
+                  selectedReport.location?.lat || selectedReport.lat || 0
+                },${selectedReport.location?.lng || selectedReport.lng || 0}`}
                 target="_blank"
-                className="text-blue-600 hover:underline flex items-center gap-1"
+                className="text-blue-600 hover:underline flex flex-col items-start gap-1"
               >
-                <MapPin size={14} />
-                {selectedReport.address ||
-                  `${(selectedReport.lat || 0).toFixed(6)}, ${(
-                    selectedReport.lng || 0
-                  ).toFixed(6)}`}
+                <div className="flex items-center gap-1">
+                  <MapPin size={14} />
+                  <span>
+                    {(
+                      selectedReport.location?.lat ||
+                      selectedReport.lat ||
+                      0
+                    ).toFixed(6)}
+                    ,{" "}
+                    {(
+                      selectedReport.location?.lng ||
+                      selectedReport.lng ||
+                      0
+                    ).toFixed(6)}
+                  </span>
+                </div>
+                {(selectedReport.location?.address ||
+                  selectedReport.address) && (
+                  <span className="text-gray-600 text-sm ml-5">
+                    {selectedReport.location?.address || selectedReport.address}
+                  </span>
+                )}
               </a>
             </div>
 
@@ -685,33 +824,55 @@ export default function CreateReportPage() {
                   Hình ảnh
                 </Text>
                 <div className="grid grid-cols-3 gap-2">
-                  {selectedReport.images.map((url: string, i: number) => (
-                    <img
-                      key={i}
-                      src={url}
-                      alt="evidence"
-                      className="w-full h-24 object-cover rounded border"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/placeholder.jpg";
-                      }}
-                    />
-                  ))}
+                  {selectedReport.images
+                    .filter((url: string) => url && typeof url === 'string' && url.trim() !== "")
+                    .map((url: string, i: number) => (
+                      <img
+                        key={i}
+                        src={getImageSrc(url)}
+                        alt="evidence"
+                        className="w-full h-24 object-cover rounded border"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ))}
                 </div>
               </div>
             )}
 
-            <div className="pt-4 border-t text-sm text-gray-500 flex justify-between">
-              <span>
-                Độ tin cậy:{" "}
-                <strong>{selectedReport.trustScore || trustScore}/100</strong>
-              </span>
-              <span>
-                ID:{" "}
-                {selectedReport.reportId ||
-                  selectedReport.id ||
-                  selectedReport._id ||
-                  "N/A"}
-              </span>
+            {/* Reliability Score in Detail Modal */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+               <div className="flex justify-between mb-2">
+                  <Text strong>Độ tin cậy của tin báo:</Text>
+               </div>
+               {(() => {
+                  let score = 0;
+                  if (selectedReport.location?.lat || selectedReport.lat) score += 40;
+                  if (selectedReport.images && selectedReport.images.length > 0) {
+                    score += 20;
+                    if (selectedReport.images.length >= 2) score += 10;
+                  }
+                  const desc = selectedReport.description || "";
+                  if (desc.length > 10) score += 10;
+                  if (desc.length > 50) score += 10;
+                  if (selectedReport.eventType) score += 5;
+                  if (selectedReport.severity) score += 5;
+                  
+                  score = Math.max(0, score - 10);
+
+                  return (
+                    <div className="w-full">
+                      <Progress 
+                        percent={score} 
+                        status={score === 100 ? 'success' : 'normal'} 
+                        strokeColor={score > 70 ? '#52c41a' : score > 40 ? '#faad14' : '#ff4d4f'} 
+                        showInfo={false}
+                        className="!m-0 !w-full"
+                      />
+                    </div>
+                  );
+               })()}
             </div>
           </div>
         )}
