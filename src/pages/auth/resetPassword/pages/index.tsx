@@ -4,16 +4,15 @@ import { useState } from "react";
 import type { ResetPasswordRequest } from "../interfaces";
 
 export default function ResetPasswordPage() {
-  const [isResetPassword, setIsResetPassword] = useState(false);
+  const [isResetPassword] = useState(false);
   const [form] = Form.useForm<ResetPasswordRequest>();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otpRequest, setOtpRequest] = useState("");
-  const [isHaveOtp, setIsHaveOtp] = useState(false);
+  const [isHaveOtp] = useState(false);
   const [isLoadingSendOtp, setIsLoadingSendOtp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [disabled, setDisabled] = useState(true);
-  const [time, setTime] = useState(60);
-  const [isNumber, setIsNumber] = useState(1);
+  const [isNumber] = useState(1);
 
   // Hàm xử lý gửi mã OTP
   const handleSendOtp = async () => {

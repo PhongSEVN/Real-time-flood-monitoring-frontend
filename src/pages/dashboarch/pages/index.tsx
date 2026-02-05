@@ -154,7 +154,7 @@ export default function Dashboard() {
             <GeoJSON
               data={householdsData.data}
               onEachFeature={onEachFeature}
-              pointToLayer={(feature: any, latlng: any) => {
+              pointToLayer={(_feature: any, latlng: any) => {
                 return L.circleMarker(latlng, {
                   radius: 6,
                   fillColor: "#ff7800",

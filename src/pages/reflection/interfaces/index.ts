@@ -7,4 +7,7 @@ export interface Reflection {
   eventType: EventType; // Loại sự cố
   severity: Severity; // Mức độ
   images: string[]; // Ảnh
+  lat: number;
+  lng: number;
+  address: string;
 }

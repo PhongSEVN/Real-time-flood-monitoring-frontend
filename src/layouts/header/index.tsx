@@ -28,8 +28,8 @@ type HeaderProps = {
 export default function Header({ onMenuToggle }: HeaderProps) {
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
-  const [isConnected, setIsConnected] = useState(false);
-  const [alertsCount, setAlertsCount] = useState<number | null>(null);
+  const [isConnected] = useState(false);
+  const [alertsCount] = useState<number | null>(null);
   const [isOpenModalLogout, setIsOpenModalLogout] = useState(false);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   useEffect(() => {

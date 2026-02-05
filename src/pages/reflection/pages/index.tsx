@@ -234,13 +234,6 @@ export default function CreateReportPage() {
     }
   };
 
-  const handleDelete = (id: string) => {
-    setSubmittedReports((prev) =>
-      prev.filter((r) => r.reportId !== id && r.id !== id)
-    );
-    message.success("Đã xóa khỏi lịch sử cục bộ");
-  };
-
   const getStatusTag = (status?: string) => {
     switch (status?.toUpperCase()) {
       case "PENDING":
